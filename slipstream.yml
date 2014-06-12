@@ -1,0 +1,14 @@
+web:
+  image: apps/wordpress
+  parameters:
+    - db_password: db:pg_password
+db:
+  image: sixsq/postgresql
+  reference: examples/images/ubuntu-12.04
+  packages:
+    - postgres
+  execute: setup_postgres.sh
+  send_report: call_me_maybe.sh
+  parameters:
+    - pg_password
+  multiplicity: 3

@@ -1,0 +1,10 @@
+$ slipstream_
+
+  sliptream is an experimental companion tool for SlipStream. It aims to be
+  used by command line lovers that prefers to sit in teminal windows than in
+  browser GUI to get things done.
+
+Usage:
+
+  $ pip install --editable .
+  $ slipstream --help

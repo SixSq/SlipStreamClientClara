@@ -1,0 +1,4 @@
+<vms>
+  <vm cloud="exoscale-ch-gva" user="none" instanceId="a087572b-e368-421a-8a25-ed67fcdfe202" state="Running" measurement="2014-06-02 10:34:34.87 UTC" runUuid="fa204c53-2d74-4fee-a76e-014e21ca3bd0"/>
+  <vm cloud="ec2-eu-west-1" user="none" instanceId="cac1725a-ee6d-45f4-bbf7-e67c0db7e64e" state="Terminated" measurement="2014-06-02 10:34:34.87 UTC" runUuid="e908ffdf-8445-4990-a781-e6f7d5e7044d"/>
+</vms>
