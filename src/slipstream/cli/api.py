@@ -29,6 +29,7 @@ class Api(object):
         self.endpoint = DEFAULT_ENDPOINT if endpoint is None else endpoint
         self.session = requests.Session()
         self.session.auth = (username, password)
+        self.session.verify = False
 
     def verify(self):
         response = self.session.get('%s/dashboard' % self.endpoint)

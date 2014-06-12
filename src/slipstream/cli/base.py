@@ -1,7 +1,12 @@
-from __future__ import absolute_import
+from __future__ import absolute_import, unicode_literals
 
 import os
 import sys
+import stat
+
+import six
+from six.moves import configparser
+from six.moves.urllib.parse import urlparse
 
 import click
 from prettytable import PrettyTable
@@ -9,16 +14,6 @@ from requests.exceptions import HTTPError
 
 from . import __version__
 from .api import Api, DEFAULT_ENDPOINT
-
-try:
-    from urllib import parser as urlparse
-except ImportError:
-    import urlparse
-
-try:
-    import ConfigParser as configparser
-except ImportError:
-    import configparser
 
 DEFAULT_CONFIG = os.path.join(os.environ['HOME'], '.slipstreamconfig')
 DEFAULT_PROFILE = 'slipstream'
@@ -93,17 +88,17 @@ class Config(object):
     def write_config(self):
         if not self.parser.has_section('alias'):
             self.parser.add_section('alias')
-        for alias in self.aliases.iteritems():
+        for alias in six.iteritems(self.aliases):
             self.parser.set('alias', *alias)
 
         if not self.parser.has_section(self.profile):
             self.parser.add_section(self.profile)
-        for setting in self.settings.iteritems():
+        for setting in six.iteritems(self.settings):
             self.parser.set(self.profile, *setting)
 
-        with open(self.filename, 'wb') as fp:
+        with open(self.filename, 'w') as fp:
             self.parser.write(fp)
-        os.chmod(self.filename, 0600)
+        os.chmod(self.filename, stat.S_IRUSR)
 
     def clear_setting(self, setting):
         self.settings.pop(setting, None)
@@ -193,7 +188,7 @@ def cli(ctx):
 @pass_config
 def aliases(cfg):
     """List currently defined aliases"""
-    for alias in sorted(cfg.aliases.iterkeys()):
+    for alias in sorted(six.iterkeys(cfg.aliases)):
         click.echo("%s=%s" % (alias, cfg.aliases[alias]))
 
 
@@ -272,7 +267,7 @@ def list_virtualmachines(api, run_id, cloud, status):
             return False
         return True
 
-    vms = filter(filter_func, api.list_virtualmachines())
+    vms = [vm for vm in api.list_virtualmachines() if filter_func(vm)]
     if vms:
         printtable(vms)
     else:

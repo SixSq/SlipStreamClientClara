@@ -1,11 +1,13 @@
-import os
+from __future__ import unicode_literals
+
 import uuid
 
 import mock
 import pytest
 
 from click.testing import CliRunner
-from slipstream.cli import models
+from slipstream.cli import base, models
+from slipstream.cli.api import Api
 
 
 @pytest.fixture(scope='function')
@@ -15,37 +17,26 @@ def runner():
 
 @pytest.fixture(scope='function')
 def cli():
-    from slipstream.cli.base import cli
-    return cli
+    return base.cli
 
 
 @pytest.fixture(scope='function')
 def api():
-    from slipstream.cli import api
-    return api.Api(username='clara', password='s3cr3t')
+    return Api(username='clara', password='s3cr3t')
 
 
 @pytest.fixture(autouse=True)
-def default_config_file(request, monkeypatch):
-    filename = '.slipstreamconfig'
-    monkeypatch.setattr('slipstream.cli.base.DEFAULT_CONFIG', filename)
-    return filename
-
-
-@pytest.fixture(autouse=True)
-def isolated_filesystem(request, tmpdir):
-    cwd = os.getcwd()
-    tmpdir.chdir()
-
-    def teardown():
-        os.chdir(cwd)
-    request.addfinalizer(teardown)
+def default_config(tmpdir):
+    config = tmpdir.join('.slipstreamconfig')
+    base.DEFAULT_CONFIG = config.strpath
+    return config
 
 
 @pytest.fixture(scope='function')
-def verified_auth(request, default_config_file, isolated_filesystem):
-    with open(default_config_file, 'wb') as f:
-        f.write("[slipstream]\nusername = clara\npassword = s3cr3t\n")
+def authenticated(request, default_config):
+    default_config.write("[slipstream]\n"
+                         "username = clara\n"
+                         "password = s3cr3t\n")
 
     patcher = mock.patch('slipstream.cli.api.Api.verify', return_value=True)
     def teardown():

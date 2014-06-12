@@ -20,18 +20,12 @@ setup(
         'defusedxml',
         'prettytable',
         'requests',
+        'six',
     ],
     entry_points='''
     [console_scripts]
     slipstream=slipstream.cli.runner:main
     ''',
-    extras_require={
-        'testing':  [
-            'pytest',
-            'pytest-cov',
-            'responses',
-        ]
-    },
     classifiers=[
         'Intended Audience :: Developers',
         'Intended Audience :: System Administrators',
