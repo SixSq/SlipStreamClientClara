@@ -139,6 +139,19 @@ class TestListApplications(object):
 
 
 @pytest.mark.usefixtures('authenticated')
+class TestListRuns(object):
+
+    def test_list_all(self, runner, cli, runs):
+        with mock.patch('slipstream.cli.api.Api.list_runs',
+                        return_value=iter(runs)):
+            result = runner.invoke(cli, ['list', 'runs'])
+            assert result.exit_code == 0
+            assert '3fd93072-fcef-4c03-bdec-0cb2b19699e2' in result.output
+            assert 'bd871bcb-a7aa-4c2a-acbe-38722a388b6e' in result.output
+            assert '85127a28-455a-44a4-bba3-ca56bfe6858e' in result.output
+
+
+@pytest.mark.usefixtures('authenticated')
 class TestListVirtualMachines(object):
 
     def test_list_all(self, runner, cli, vms):
