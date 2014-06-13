@@ -50,9 +50,9 @@ def authenticated(request, default_config):
 def apps():
     return [
         models.App(name="wordpress", type='deployment', version=478,
-                   path="examples/tutorials/wordpress/wordpress/478"),
+                   path="examples/tutorials/wordpress/wordpress"),
         models.App(name="ubuntu-12.04", type="image", version=480,
-                   path="examples/images/ubuntu-12.04/480"),
+                   path="examples/images/ubuntu-12.04"),
     ]
 
 

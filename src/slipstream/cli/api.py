@@ -13,8 +13,12 @@ except ImportError:
     from defusedxml import ElementTree as etree
 
 
-def mod(path):
-    return path.replace('module/', '')
+def mod(path, with_version=True):
+    parts = path.split('/')
+    if with_version:
+        return '/'.join(parts[1:])
+    else:
+        return '/'.join(parts[1:-1])
 
 
 def ElementTree__iter(root):
@@ -57,7 +61,7 @@ class Api(object):
                 yield models.App(elem.get('name'),
                                  elem.get('category').lower(),
                                  int(elem.get('version')),
-                                 mod(elem.get('resourceUri')))
+                                 mod(elem.get('resourceUri'), with_version=False))
 
     def list_runs(self):
         root = self.xml_get('/run')
