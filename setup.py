@@ -4,7 +4,7 @@ from setuptools import setup, find_packages
 
 setup(
     name='slipstream-cli',
-    version='0.1.0',
+    version='0.2.0',
     author="Sebastien Fievet",
     author_email='sebastien@sixsq.com',
     url='https://github.com/slipstream/slipstream-cli',
