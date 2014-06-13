@@ -81,23 +81,25 @@ class Api(object):
                                         status=elem.get('state').lower(),
                                         run_id=uuid.UUID(elem.get('runUuid')))
 
-    def run_image(self, path, cloud='default'):
+    def run_image(self, path, cloud=None):
         response = self.session.post(self.endpoint + '/run', data={
             'type': 'Run',
             'refqname': path,
-            'parameter--cloudservice': cloud,
+            'parameter--cloudservice': cloud or 'default',
         })
         response.raise_for_status()
-        return response.headers['location'].split('/')[-1]
+        run_id = response.headers['location'].split('/')[-1]
+        return uuid.UUID(run_id)
 
-    def run_deployment(self, path, params=None):
+    def run_deployment(self, path, params=()):
         data = {'refqname': path}
         for node, (key, value) in params:
             data['parameter--node--{0}--{1}'.format(node, key)] = value
 
         response = self.session.post(self.endpoint + '/run', data=data)
         response.raise_for_status()
-        return response.headers['location'].split('/')[-1]
+        run_id = response.headers['location'].split('/')[-1]
+        return uuid.UUID(run_id)
 
     def terminate(self, run_id):
         response = self.session.delete('%s/run/%s' % (self.endpoint, run_id))
