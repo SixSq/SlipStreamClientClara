@@ -73,6 +73,30 @@ def vms():
 
 
 @pytest.fixture(scope='function')
+def runs():
+    return [
+        models.Run(
+            id=uuid.UUID('3fd93072-fcef-4c03-bdec-0cb2b19699e2'),
+            module='examples/tutorials/wordpress/wordpress/478',
+            status='running',
+            started_at='2014-06-13 12:09:47.202 UTC',
+            cloud='exoscale-ch-gva'),
+        models.Run(
+            id=uuid.UUID('bd871bcb-a7aa-4c2a-acbe-38722a388b6e'),
+            module='examples/images/centos-6/479',
+            status='running',
+            started_at='2014-06-12 08:55:43.12 UTC',
+            cloud='ec2-eu-west'),
+        models.Run(
+            id=uuid.UUID('85127a28-455a-44a4-bba3-ca56bfe6858e'),
+            module='examples/images/centos-6/479',
+            status='aborted',
+            started_at='2014-06-12 08:48:23.677 UTC',
+            cloud='exoscale-ch-gva')
+    ]
+
+
+@pytest.fixture(scope='function')
 def usage():
     return [
         models.Usage('exoscale-ch-gva', 1, 20),

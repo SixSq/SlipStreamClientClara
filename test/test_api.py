@@ -1,6 +1,7 @@
 from __future__ import unicode_literals
 
 import os
+import uuid
 
 import pytest
 import responses
@@ -28,7 +29,7 @@ def test_verify(api):
         responses.reset()
         responses.add(responses.GET, 'https://slipstream.sixsq.com/dashboard',
                       status=503)
-        with pytest.raises(requests.RequestException):
+        with pytest.raises(requests.HTTPError):
             api.verify()
 
     run()
@@ -52,6 +53,17 @@ def test_list_virtualmachines(api, vms):
                       body=load_fixture('vms.xml'), status=200,
                       content_type='application/xml')
         assert list(api.list_virtualmachines()) == vms
+
+    run()
+
+
+def test_list_runs(api, runs):
+    @responses.activate
+    def run():
+        responses.add(responses.GET, 'https://slipstream.sixsq.com/run',
+                      body=load_fixture('run.xml'), status=200,
+                      content_type='application/xml')
+        assert list(api.list_runs()) == runs
 
     run()
 

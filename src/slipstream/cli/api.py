@@ -67,12 +67,11 @@ class Api(object):
     def list_runs(self):
         root = self.xml_get('/run')
         for elem in ElementTree__iter(root)('item'):
-            if elem.get('type') == 'Run':
-                yield models.Run(id=elem.get('uuid'),
-                                 module=mod(elem.get('moduleResourceUri')),
-                                 status=elem.get('status').lower(),
-                                 started_at=elem.get('startTime'),
-                                 cloud=elem.get('cloudServiceName'))
+            yield models.Run(id=uuid.UUID(elem.get('uuid')),
+                             module=mod(elem.get('moduleResourceUri')),
+                             status=elem.get('status').lower(),
+                             started_at=elem.get('startTime'),
+                             cloud=elem.get('cloudServiceName'))
 
     def list_virtualmachines(self):
         root = self.xml_get('/vms')
