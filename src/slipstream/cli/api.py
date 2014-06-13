@@ -58,28 +58,29 @@ class Api(object):
         root = self.xml_get('/')
         for elem in ElementTree__iter(root)('item'):
             if elem.get('published', False):
-                yield models.App(elem.get('name'),
-                                 elem.get('category').lower(),
-                                 int(elem.get('version')),
-                                 mod(elem.get('resourceUri'), with_version=False))
+                yield models.App(name=elem.get('name'),
+                                 type=elem.get('category').lower(),
+                                 version=int(elem.get('version')),
+                                 path=mod(elem.get('resourceUri'),
+                                          with_version=False))
 
     def list_runs(self):
         root = self.xml_get('/run')
         for elem in ElementTree__iter(root)('item'):
             if elem.get('type') == 'Run':
-                yield models.Run(elem.get('uuid'),
-                                 mod(elem.get('moduleResourceUri')),
-                                 elem.get('status').lower(),
-                                 elem.get('startTime'),
-                                 elem.get('cloudServiceName'))
+                yield models.Run(id=elem.get('uuid'),
+                                 module=mod(elem.get('moduleResourceUri')),
+                                 status=elem.get('status').lower(),
+                                 started_at=elem.get('startTime'),
+                                 cloud=elem.get('cloudServiceName'))
 
     def list_virtualmachines(self):
         root = self.xml_get('/vms')
         for elem in ElementTree__iter(root)('vm'):
-            yield models.VirtualMachine(uuid.UUID(elem.get('instanceId')),
-                                        elem.get('cloud'),
-                                        elem.get('state').lower(),
-                                        uuid.UUID(elem.get('runUuid')))
+            yield models.VirtualMachine(id=uuid.UUID(elem.get('instanceId')),
+                                        cloud=elem.get('cloud'),
+                                        status=elem.get('state').lower(),
+                                        run_id=uuid.UUID(elem.get('runUuid')))
 
     def run_image(self, path, cloud='default'):
         response = self.session.post(self.endpoint + '/run', data={
@@ -90,6 +91,15 @@ class Api(object):
         response.raise_for_status()
         return response.headers['location'].split('/')[-1]
 
+    def run_deployment(self, path, params=None):
+        data = {'refqname': path}
+        for node, (key, value) in params:
+            data['parameter--node--{0}--{1}'.format(node, key)] = value
+
+        response = self.session.post(self.endpoint + '/run', data=data)
+        response.raise_for_status()
+        return response.headers['location'].split('/')[-1]
+
     def terminate(self, run_id):
         response = self.session.delete('%s/run/%s' % (self.endpoint, run_id))
         response.raise_for_status()
@@ -97,6 +107,6 @@ class Api(object):
     def usage(self):
         root = self.xml_get('/dashboard')
         for elem in ElementTree__iter(root)('usageElement'):
-            yield models.Usage(elem.get('cloud'),
-                               int(elem.get('currentUsage')),
-                               int(elem.get('quota')))
+            yield models.Usage(cloud=elem.get('cloud'),
+                               usage=int(elem.get('currentUsage')),
+                               quota=int(elem.get('quota')))
