@@ -77,9 +77,9 @@ def test_run_image(api):
                       adding_headers={'location': '%s/%s' % (url, run_id)})
         assert api.run_image('clara/centos-6') == run_id
         call = responses.calls[0]
-        assert call.request.body == '&'.join(['parameter--cloudservice=default',
-                                              'type=Run',
-                                              'refqname=clara%2Fcentos-6'])
+        assert 'parameter--cloudservice=default' in call.request.body
+        assert 'type=Run' in call.request.body
+        assert 'refqname=clara%2Fcentos-6' in call.request.body
 
     @responses.activate
     def defined_cloud():
@@ -87,11 +87,13 @@ def test_run_image(api):
         run_id = uuid.uuid4()
         responses.add(responses.POST, url, status=201,
                       adding_headers={'location': '%s/%s' % (url, run_id)})
+
         assert api.run_image('clara/centos-6', cloud='cloud1') == run_id
+
         call = responses.calls[0]
-        assert call.request.body == '&'.join(['parameter--cloudservice=cloud1',
-                                              'type=Run',
-                                              'refqname=clara%2Fcentos-6'])
+        assert 'parameter--cloudservice=cloud1' in call.request.body
+        assert 'type=Run' in call.request.body
+        assert 'refqname=clara%2Fcentos-6' in call.request.body
 
     default()
     defined_cloud()
@@ -114,18 +116,18 @@ def test_run_deployment(api):
         run_id = uuid.uuid4()
         responses.add(responses.POST, url, status=201,
                       adding_headers={'location': '%s/%s' % (url, run_id)})
+
         assert api.run_deployment(
             path='clara/wordpress',
             params=(
                 ('wp', ('cloudservice', 'cloud1')),
                 ('wp', ('multiplicity', 2))
             )) == run_id
+
         call = responses.calls[0]
-        assert call.request.body == '&'.join([
-            'refqname=clara%2Fwordpress',
-            'parameter--node--wp--multiplicity=2',
-            'parameter--node--wp--cloudservice=cloud1',
-        ])
+        assert 'parameter--node--wp--multiplicity=2' in call.request.body
+        assert 'parameter--node--wp--cloudservice=cloud1' in call.request.body
+        assert 'refqname=clara%2Fwordpress' in call.request.body
 
     default()
     with_params()
