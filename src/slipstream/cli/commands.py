@@ -194,10 +194,9 @@ def run_image(ctx, cloud, should_open, path):
     except HTTPError as e:
         raise click.ClickException(str(e))
 
+    click.echo(run_id)
     if should_open:
         ctx.invoke(open_cmd, run_id=run_id)
-    else:
-        click.echo(run_id)
 
 
 @run.command('deployment')
@@ -215,10 +214,9 @@ def run_deployment(ctx, should_open, params, path):
     except HTTPError as e:
         raise click.ClickException(str(e))
 
+    click.echo(run_id)
     if should_open:
         ctx.invoke(open_cmd, run_id=run_id)
-    else:
-        click.echo(run_id)
 
 
 @cli.command('open')
