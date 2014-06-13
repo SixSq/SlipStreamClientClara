@@ -1,5 +1,6 @@
 from __future__ import absolute_import, unicode_literals
 
+import collections
 import sys
 
 import click
@@ -200,16 +201,24 @@ def run_image(ctx, cloud, should_open, path):
 
 
 @run.command('deployment')
-@click.option('--cloud', type=types.KeyValue(), metavar='NODE=CLOUD', nargs=-1)
-@click.option('--multiplicity', type=types.KeyValue(), metavar='NODE=MULTIPLICITY',
-              nargs=-1)
 @click.option('--open', 'should_open', is_flag=True, default=False,
               help="Open the created run in a web browser.")
-@click.argument('path', metavar='PATH', required=True)
-@click.pass_obj
-def run_deployment(api, cloud, multiplicity, should_open, path):
+@click.argument('params', type=types.NodeKeyValue(), metavar='NODE:KEY=VALUE',
+                nargs=-1, required=False)
+@click.argument('path', metavar='PATH', nargs=1, required=True)
+@click.pass_context
+def run_deployment(ctx, should_open, params, path):
     """Run a deployment"""
-    pass
+    api = ctx.obj
+    try:
+        run_id = api.run_deployment(path, params)
+    except HTTPError as e:
+        raise click.ClickException(str(e))
+
+    if should_open:
+        ctx.invoke(open_cmd, run_id=run_id)
+    else:
+        click.echo(run_id)
 
 
 @cli.command('open')

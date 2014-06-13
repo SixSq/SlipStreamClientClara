@@ -19,4 +19,18 @@ class KeyValue(click.ParamType):
     name = 'keyvalue'
 
     def convert(self, value, param, ctx):
-        return tuple(value.split('='))
+        try:
+            return tuple(value.split('='))
+        except ValueError:
+            self.fail("%s is not a valid KEY=VALUE value" % value, param, ctx)
+
+
+class NodeKeyValue(click.ParamType):
+    name = 'nodekeyvalue'
+
+    def convert(self, value, param, ctx):
+        try:
+            node, param = value.split(':')
+            return (node, tuple(param.split('=')))
+        except ValueError:
+            self.fail("%s is not a valid NODE:KEY=VALUE value" % value, param, ctx)
