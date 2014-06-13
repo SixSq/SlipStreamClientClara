@@ -24,7 +24,7 @@ setup(
     ],
     entry_points='''
     [console_scripts]
-    slipstream=slipstream.cli.runner:main
+    slipstream=slipstream.cli:main
     ''',
     classifiers=[
         'Intended Audience :: Developers',

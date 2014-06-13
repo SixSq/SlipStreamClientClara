@@ -5,13 +5,12 @@ import uuid
 import requests
 
 from . import models
+from .conf import DEFAULT_ENDPOINT
 
 try:
     from defusedxml import cElementTree as etree
 except ImportError:
     from defusedxml import ElementTree as etree
-
-DEFAULT_ENDPOINT = 'https://slipstream.sixsq.com'
 
 
 def mod(path):

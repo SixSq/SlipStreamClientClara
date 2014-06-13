@@ -2,7 +2,6 @@ from __future__ import unicode_literals
 
 import collections
 
-
 App = collections.namedtuple('App', [
     'name',
     'type',

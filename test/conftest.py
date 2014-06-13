@@ -6,8 +6,14 @@ import mock
 import pytest
 
 from click.testing import CliRunner
-from slipstream.cli import base, models
-from slipstream.cli.api import Api
+from slipstream.cli import models
+
+
+@pytest.fixture(autouse=True)
+def default_config(monkeypatch, tmpdir):
+    config = tmpdir.join('.slipstreamconfig')
+    monkeypatch.setattr('slipstream.cli.conf.DEFAULT_CONFIG', config.strpath)
+    return config
 
 
 @pytest.fixture(scope='function')
@@ -17,19 +23,14 @@ def runner():
 
 @pytest.fixture(scope='function')
 def cli():
-    return base.cli
+    from slipstream.cli.commands import cli
+    return cli
 
 
 @pytest.fixture(scope='function')
 def api():
+    from slipstream.cli.api import Api
     return Api(username='clara', password='s3cr3t')
-
-
-@pytest.fixture(autouse=True)
-def default_config(tmpdir):
-    config = tmpdir.join('.slipstreamconfig')
-    base.DEFAULT_CONFIG = config.strpath
-    return config
 
 
 @pytest.fixture(scope='function')
