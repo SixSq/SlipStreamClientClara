@@ -68,6 +68,26 @@ class TestLogin(object):
         assert parser.get('slipstream', 'username') == 'clara'
         assert parser.get('slipstream', 'password') == 's3cr3t'
 
+    def test_prompt_other_command(self, runner, cli, default_config):
+        with mock.patch('slipstream.cli.api.Api.verify', side_effect=[False, True]):
+            result = runner.invoke(cli, ['list'],
+                                   input=("anonymous\npassword\n"
+                                          "clara\ns3cr3t\n"))
+            assert result.exit_code == 0
+            assert result.output.startswith("Enter your SlipStream credentials.\n"
+                                            "Username: anonymous\n"
+                                            "Password (typing will be hidden): \n"
+                                            "Authentication failed.\n"
+                                            "Enter your SlipStream credentials.\n"
+                                            "Username: clara\n"
+                                            "Password (typing will be hidden): \n"
+                                            "Authentication successful.\n")
+
+        parser = configparser.RawConfigParser()
+        parser.read(default_config.strpath)
+        assert parser.get('slipstream', 'username') == 'clara'
+        assert parser.get('slipstream', 'password') == 's3cr3t'
+
     def test_with_credentials(self, runner, cli, default_config):
         with mock.patch('slipstream.cli.api.Api.verify', return_value=True):
             result = runner.invoke(cli, ['login'], input=("alice\nh4x0r\n"))
@@ -140,6 +160,14 @@ class TestListApplications(object):
         assert 'wordpress' in result.output
         assert 'ubuntu-12.04' in result.output
 
+    def test_no_apps(self, runner, cli):
+        with mock.patch('slipstream.cli.api.Api.list_applications',
+                        return_value=iter([])):
+            result = runner.invoke(cli, ['list', 'applications'])
+
+        assert result.exit_code == 0
+        assert result.output == "No applications found.\n"
+
 
 @pytest.mark.usefixtures('authenticated')
 class TestListRuns(object):
@@ -153,6 +181,14 @@ class TestListRuns(object):
         assert '3fd93072-fcef-4c03-bdec-0cb2b19699e2' in result.output
         assert 'bd871bcb-a7aa-4c2a-acbe-38722a388b6e' in result.output
         assert '85127a28-455a-44a4-bba3-ca56bfe6858e' in result.output
+
+    def test_no_runs(self, runner, cli):
+        with mock.patch('slipstream.cli.api.Api.list_runs',
+                        return_value=iter([])):
+            result = runner.invoke(cli, ['list', 'runs'])
+
+        assert result.exit_code == 0
+        assert result.output == "No runs found.\n"
 
 
 @pytest.mark.usefixtures('authenticated')
