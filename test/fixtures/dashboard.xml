@@ -1,0 +1,7 @@
+<dashboard>
+   <runs/>
+   <usage class="java.util.ArrayList">
+      <usageElement cloud="exoscale-ch-gva" quota="20" currentUsage="1"/>
+      <usageElement cloud="ec2-eu-west" quota="20" currentUsage="0"/>
+   </usage>
+</dashboard>

@@ -56,6 +56,28 @@ def test_list_virtualmachines(api, vms):
     run()
 
 
+def test_terminate(api):
+    @responses.activate
+    def deleted():
+        run_id = uuid.uuid4()
+        responses.add(responses.DELETE,
+                      'https://slipstream.sixsq.com/run/%s' % run_id,
+                      status=204)
+        assert api.terminate(run_id) is True
+
+    @responses.activate
+    def raises_error():
+        run_id = uuid.uuid4()
+        responses.add(responses.DELETE,
+                      'https://slipstream.sixsq.com/run/%s' % run_id,
+                      status=409)
+        with pytest.raises(requests.HTTPError):
+            api.terminate(run_id)
+
+    deleted()
+    raises_error()
+
+
 def test_usage(api, usage):
     @responses.activate
     def run():

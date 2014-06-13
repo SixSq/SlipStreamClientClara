@@ -103,6 +103,7 @@ class Api(object):
     def terminate(self, run_id):
         response = self.session.delete('%s/run/%s' % (self.endpoint, run_id))
         response.raise_for_status()
+        return True
 
     def usage(self):
         root = self.xml_get('/dashboard')
