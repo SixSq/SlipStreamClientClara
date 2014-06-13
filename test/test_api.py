@@ -54,3 +54,14 @@ def test_list_virtualmachines(api, vms):
         assert list(api.list_virtualmachines()) == vms
 
     run()
+
+
+def test_usage(api, usage):
+    @responses.activate
+    def run():
+        responses.add(responses.GET, 'https://slipstream.sixsq.com/dashboard',
+                      body=load_fixture('dashboard.xml'), status=200,
+                      content_type='application/xml')
+        assert list(api.usage()) == usage
+
+    run()

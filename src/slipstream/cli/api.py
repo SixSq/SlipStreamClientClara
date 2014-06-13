@@ -97,5 +97,6 @@ class Api(object):
     def usage(self):
         root = self.xml_get('/dashboard')
         for elem in ElementTree__iter(root)('usageElement'):
-            yield models.Usage(elem.get('cloud'), elem.get('currentUsage'),
-                               elem.get('quota'))
+            yield models.Usage(elem.get('cloud'),
+                               int(elem.get('currentUsage')),
+                               int(elem.get('quota')))
