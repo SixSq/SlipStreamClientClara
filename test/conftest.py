@@ -70,3 +70,11 @@ def vms():
             status="terminated",
             run_id=uuid.UUID('e908ffdf-8445-4990-a781-e6f7d5e7044d')),
     ]
+
+
+@pytest.fixture(scope='function')
+def usage():
+    return [
+        models.Usage('exoscale-ch-gva', 1, 20),
+        models.Usage('ec2-eu-west', 0, 20),
+    ]
