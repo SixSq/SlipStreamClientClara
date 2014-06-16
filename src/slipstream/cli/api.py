@@ -44,13 +44,13 @@ class Api(object):
 
     def xml_get(self, url):
         response = self.session.get('%s%s' % (self.endpoint, url),
-                                    headers={'content-type': 'application/xml'})
+                                    headers={'accept': 'application/xml'})
         response.raise_for_status()
         return etree.fromstring(response.text)
 
     def json_get(self, url):
         response = self.session.get('%s%s' % (self.endpoint, url),
-                                    headers={'content-type': 'application/json'})
+                                    headers={'accept': 'application/json'})
         response.raise_for_status()
         return response.json()
 
