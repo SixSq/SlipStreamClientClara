@@ -86,7 +86,7 @@ class Api(object):
             'type': 'Run',
             'refqname': path,
             'parameter--cloudservice': cloud or 'default',
-        })
+        }, headers={'accept': 'application/xml'})
         response.raise_for_status()
         run_id = response.headers['location'].split('/')[-1]
         return uuid.UUID(run_id)
@@ -96,7 +96,8 @@ class Api(object):
         for node, (key, value) in params:
             data['parameter--node--{0}--{1}'.format(node, key)] = value
 
-        response = self.session.post(self.endpoint + '/run', data=data)
+        response = self.session.post(self.endpoint + '/run', data=data,
+                                     headers={'accept': 'application/xml'})
         response.raise_for_status()
         run_id = response.headers['location'].split('/')[-1]
         return uuid.UUID(run_id)

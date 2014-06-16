@@ -1,6 +1,5 @@
 from __future__ import absolute_import, unicode_literals
 
-import collections
 import sys
 
 import click
@@ -8,20 +7,33 @@ import six
 from prettytable import PrettyTable
 from requests.exceptions import HTTPError
 
+from click._compat import get_text_stderr
 from six.moves import configparser
 
 from . import __version__, types
 from .api import Api
 from .base import AliasedGroup, Config
 
+try:
+    from defusedxml import cElementTree as etree
+except ImportError:
+    from defusedxml import ElementTree as etree
+
 pass_config = click.make_pass_decorator(Config)
 
 
+def echo_stderr(msg):
+    click.echo(msg, file=get_text_stderr())
+
+
 def _excepthook(exctype, value, tb):
-    if exctype == HTTPError and value.response.status_code == 401:
-        e = click.ClickException("Invalid credentials provided. "
-                                 "Log in with `slipstream login`.")
-        e.show()
+    if exctype == HTTPError:
+        if value.response.status_code == 401:
+            echo_stderr("Error: Invalid credentials provided. "
+                        "Log in with `slipstream login`.")
+        elif 'xml' in value.response.headers['content-type']:
+            root = etree.fromstring(value.response.text)
+            echo_stderr(root.text)
     else:
         import traceback
         traceback.print_exception(exctype, value, tb)
@@ -189,11 +201,7 @@ def run():
 def run_image(ctx, cloud, should_open, path):
     """Run the image to the defined cloud"""
     api = ctx.obj
-    try:
-        run_id = api.run_image(path, cloud)
-    except HTTPError as e:
-        raise click.ClickException(str(e))
-
+    run_id = api.run_image(path, cloud)
     click.echo(run_id)
     if should_open:
         ctx.invoke(open_cmd, run_id=run_id)
@@ -209,11 +217,7 @@ def run_image(ctx, cloud, should_open, path):
 def run_deployment(ctx, should_open, params, path):
     """Run a deployment"""
     api = ctx.obj
-    try:
-        run_id = api.run_deployment(path, params)
-    except HTTPError as e:
-        raise click.ClickException(str(e))
-
+    run_id = api.run_deployment(path, params)
     click.echo(run_id)
     if should_open:
         ctx.invoke(open_cmd, run_id=run_id)
@@ -232,10 +236,7 @@ def open_cmd(api, run_id):
 @click.pass_obj
 def terminate(api, run_id):
     """Terminate the given run UUID"""
-    try:
-        api.terminate(run_id)
-    except HTTPError as e:
-        raise click.ClickException(str(e))
+    api.terminate(run_id)
     click.echo("Run successfully terminated.")
 
 
