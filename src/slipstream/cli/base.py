@@ -51,7 +51,7 @@ class Config(object):
 
         with open(self.filename, 'w') as fp:
             self.parser.write(fp)
-        os.chmod(self.filename, stat.S_IRUSR)
+        os.chmod(self.filename, stat.S_IRUSR | stat.S_IWUSR)
 
     def clear_setting(self, setting):
         self.settings.pop(setting, None)
