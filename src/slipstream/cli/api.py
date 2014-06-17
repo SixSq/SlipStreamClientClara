@@ -32,6 +32,7 @@ class Api(object):
         self.endpoint = DEFAULT_ENDPOINT if endpoint is None else endpoint
         self.session = requests.Session()
         self.session.auth = (username, password)
+        self.session.headers.update({'Accept': 'application/xml'})
         self.session.verify = False
 
     def verify(self):
@@ -44,13 +45,13 @@ class Api(object):
 
     def xml_get(self, url):
         response = self.session.get('%s%s' % (self.endpoint, url),
-                                    headers={'accept': 'application/xml'})
+                                    headers={'Accept': 'application/xml'})
         response.raise_for_status()
         return etree.fromstring(response.text)
 
     def json_get(self, url):
         response = self.session.get('%s%s' % (self.endpoint, url),
-                                    headers={'accept': 'application/json'})
+                                    headers={'Accept': 'application/json'})
         response.raise_for_status()
         return response.json()
 
@@ -86,7 +87,7 @@ class Api(object):
             'type': 'Run',
             'refqname': path,
             'parameter--cloudservice': cloud or 'default',
-        }, headers={'accept': 'application/xml'})
+        })
         response.raise_for_status()
         run_id = response.headers['location'].split('/')[-1]
         return uuid.UUID(run_id)
@@ -96,15 +97,13 @@ class Api(object):
         for node, (key, value) in params:
             data['parameter--node--{0}--{1}'.format(node, key)] = value
 
-        response = self.session.post(self.endpoint + '/run', data=data,
-                                     headers={'accept': 'application/xml'})
+        response = self.session.post(self.endpoint + '/run', data=data)
         response.raise_for_status()
         run_id = response.headers['location'].split('/')[-1]
         return uuid.UUID(run_id)
 
     def terminate(self, run_id):
-        response = self.session.delete('%s/run/%s' % (self.endpoint, run_id),
-                                       headers={'accept': 'application/xml'})
+        response = self.session.delete('%s/run/%s' % (self.endpoint, run_id))
         response.raise_for_status()
         return True
 
