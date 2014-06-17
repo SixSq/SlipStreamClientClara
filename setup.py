@@ -15,7 +15,7 @@ if sys.version_info < (3, 2):
 
 setup(
     name='slipstream-cli',
-    version='0.2.0',
+    version='0.3.0',
     author="Sebastien Fievet",
     author_email='sebastien@sixsq.com',
     url='https://github.com/slipstream/slipstream-cli',
