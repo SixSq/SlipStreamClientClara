@@ -34,6 +34,8 @@ def _excepthook(exctype, value, tb):
         elif 'xml' in value.response.headers['content-type']:
             root = etree.fromstring(value.response.text)
             echo_stderr(root.text)
+        else:
+            echo_stderr(value)
     else:
         import traceback
         traceback.print_exception(exctype, value, tb)
