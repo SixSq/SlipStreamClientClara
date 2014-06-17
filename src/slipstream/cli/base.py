@@ -1,12 +1,13 @@
 from __future__ import absolute_import, unicode_literals
 
+import codecs
+import configparser
 import os
 import stat
 
-import click
 import six
 
-from six.moves import configparser
+import click
 
 from . import conf
 
@@ -24,10 +25,12 @@ class Config(object):
 
         self.filename = conf.DEFAULT_CONFIG if filename is None else filename
         self.profile = conf.DEFAULT_PROFILE if profile is None else profile
-        self.parser = configparser.RawConfigParser()
+        self.parser = configparser.ConfigParser(interpolation=None)
 
     def read_config(self):
-        self.parser.read([self.filename])
+        if os.path.isfile(self.filename):
+            with codecs.open(self.filename, encoding='utf8') as fp:
+                self.parser.read_file(fp)
         try:
             self.aliases.update(self.parser.items('alias'))
         except configparser.NoSectionError:
@@ -49,7 +52,7 @@ class Config(object):
         for setting in six.iteritems(self.settings):
             self.parser.set(self.profile, *setting)
 
-        with open(self.filename, 'w') as fp:
+        with codecs.open(self.filename, 'wb', 'utf8') as fp:
             self.parser.write(fp)
         os.chmod(self.filename, stat.S_IRUSR | stat.S_IWUSR)
 

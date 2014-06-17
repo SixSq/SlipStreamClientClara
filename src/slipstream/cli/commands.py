@@ -1,14 +1,14 @@
 from __future__ import absolute_import, unicode_literals
 
+import configparser
 import sys
 
-import click
 import six
-from prettytable import PrettyTable
 from requests.exceptions import HTTPError
 
+import click
 from click._compat import get_text_stderr
-from six.moves import configparser
+from prettytable import PrettyTable
 
 from . import __version__, types
 from .api import Api
@@ -70,31 +70,45 @@ def read_config(ctx, param, value):
     return value
 
 
+def config_set(ctx, param, value):
+    cfg = ctx.ensure_object(Config)
+    if value is not None:
+        cfg.settings[param.name] = value
+    return value
+
+
 @click.command(cls=AliasedGroup)
-@click.option('-p', '--profile', metavar='PROFILE',
+@click.option('-P', '--profile', metavar='PROFILE',
               callback=use_profile, expose_value=False, is_eager=True,
               help="The section to use from the config file instead of the "
               "default.")
 @click.option('-c', '--config', type=click.Path(exists=True, dir_okay=False),
               callback=read_config, expose_value=False,
               help="The config file to use instead of the default.")
+@click.option('-u', '--username', metavar='USERNAME',
+              callback=config_set, expose_value=False,
+              help="The SlipStream username to connect with")
+@click.option('-p', '--password', metavar='PASSWORD',
+              help="The SlipStream password to connect with")
+@click.option('-e', '--endpoint', type=types.URL(), metavar='URL',
+              callback=config_set, expose_value=False,
+              help='The SlipStream endpoint to use')
 @click.version_option(version=__version__)
 @click.pass_context
-def cli(ctx):
+def cli(ctx, password):
     """SlipStream command line tool"""
+    # Attach Config object to context for subsequent use
     cfg = ctx.obj
 
     if any(['login' in ctx.args, 'logout' in ctx.args, 'aliases' in ctx.args]):
         return
 
     # Ask for credentials to the user when (s)he hasn't provided some
-    if any([cfg.settings.get('username') is None,
-            cfg.settings.get('password') is None]):
-        ctx.invoke(login)
+    if 'token' not in cfg.settings:
+        ctx.invoke(login, password)
 
-    # Attach API object to context for subsequent use
-    ctx.obj = Api(cfg.settings['username'], cfg.settings['password'],
-                  cfg.settings['endpoint'])
+    # Attach Api object to context for subsequent use
+    ctx.obj = Api(cfg.settings['endpoint'], cfg.settings['token'])
 
 
 @cli.command()
@@ -106,22 +120,49 @@ def aliases(cfg):
 
 
 @cli.command()
+@click.option('-u', '--username', metavar='USERNAME',
+              callback=config_set, expose_value=False,
+              help="The SlipStream username to connect with")
+@click.option('-p', '--password', metavar='PASSWORD',
+              help="The SlipStream password to connect with")
+@click.option('-e', '--endpoint', type=types.URL(), metavar='URL',
+              callback=config_set, expose_value=False,
+              help='The SlipStream endpoint to use')
 @pass_config
-def login(cfg):
+def login(cfg, password):
     """Log in with your slipstream credentials"""
-    while True:
-        click.echo("Enter your SlipStream credentials.")
-        cfg.settings['username'] = click.prompt("Username")
-        cfg.settings['password'] = click.prompt("Password (typing will be hidden)",
-                                                hide_input=True)
+    should_prompt = True
+    api = Api(cfg.settings['endpoint'])
+    username = cfg.settings.get('username')
 
-        api = Api(cfg.settings['username'], cfg.settings['password'],
-                  cfg.settings['endpoint'])
-        if api.verify():
-            break
-        click.echo("Authentication failed.")
+    if username and password:
+        try:
+            token = api.login(username, password)
+        except HTTPError as e:
+            if e.response.status_code != 401:
+                raise
+            click.echo("Invalid credentials provided.")
+        else:
+            should_prompt = False
+
+    while should_prompt:
+        click.echo("Enter your SlipStream credentials.")
+        username = click.prompt("Username")
+        password = click.prompt("Password (typing will be hidden)",
+                                hide_input=True)
+
+        try:
+            token = api.login(username, password)
+        except HTTPError as e:
+            if e.response.status_code != 401:
+                raise
+            click.echo("Authentication failed.")
+        else:
+            cfg.settings['username'] = username
+            should_prompt = False
 
     click.echo("Authentication successful.")
+    cfg.settings['token'] = token
     cfg.write_config()
 
 
@@ -130,7 +171,7 @@ def login(cfg):
 def logout(cfg):
     """Clear local authentication credentials"""
     cfg.clear_setting('username')
-    cfg.clear_setting('password')
+    cfg.clear_setting('token')
     cfg.write_config()
     click.echo("Local credentials cleared.")
 

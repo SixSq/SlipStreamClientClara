@@ -3,9 +3,11 @@ from __future__ import unicode_literals
 import os
 import uuid
 
+import requests
+
+import mock
 import pytest
 import responses
-import requests
 
 
 def load_fixture(filename):
@@ -14,23 +16,29 @@ def load_fixture(filename):
     ).read()
 
 
-def test_verify(api):
+def test_login(api):
+    username = 'clara'
+    password = 's3cr3t'
+
     @responses.activate
     def run():
-        responses.add(responses.GET, 'https://slipstream.sixsq.com/dashboard',
-                      status=200)
-        assert api.verify() is True
+        responses.add(responses.POST, 'https://slipstream.sixsq.com/login',
+                      status=303)
+        with mock.patch.object(api.session, 'cookies'):
+            api.login(username, password)
+            assert api.session.cookies.__getitem__.calls_with('com.sixsq.slipstream.cookie')
 
         responses.reset()
-        responses.add(responses.GET, 'https://slipstream.sixsq.com/dashboard',
+        responses.add(responses.POST, 'https://slipstream.sixsq.com/login',
                       status=401)
-        assert api.verify() is False
+        with pytest.raises(requests.HTTPError):
+            api.login(username, password)
 
         responses.reset()
-        responses.add(responses.GET, 'https://slipstream.sixsq.com/dashboard',
+        responses.add(responses.POST, 'https://slipstream.sixsq.com/login',
                       status=503)
         with pytest.raises(requests.HTTPError):
-            api.verify()
+            api.login(username, password)
 
     run()
 

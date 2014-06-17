@@ -1,11 +1,19 @@
+# -*- coding: utf-8 -*-
 from __future__ import unicode_literals
 
+import configparser
 import uuid
-
-from six.moves import configparser
 
 import mock
 import pytest
+import requests
+
+
+class UnauthorizedError(requests.HTTPError):
+
+    def __init__(self, *args, **kwargs):
+        self.response = requests.Response()
+        self.response.status_code = 401
 
 
 class TestAlias(object):
@@ -49,7 +57,8 @@ class TestLogin(object):
         assert "Profile 'profile1' does not exists." in result.output
 
     def test_no_credentials(self, runner, cli, default_config):
-        with mock.patch('slipstream.cli.api.Api.verify', side_effect=[False, True]):
+        with mock.patch('slipstream.cli.api.Api.login',
+                        side_effect=[UnauthorizedError, 'token1']):
             result = runner.invoke(cli, ['login'],
                                    input=("anonymous\npassword\n"
                                           "clara\ns3cr3t\n"))
@@ -66,10 +75,11 @@ class TestLogin(object):
         parser = configparser.RawConfigParser()
         parser.read(default_config.strpath)
         assert parser.get('slipstream', 'username') == 'clara'
-        assert parser.get('slipstream', 'password') == 's3cr3t'
+        assert parser.get('slipstream', 'token') == 'token1'
 
     def test_prompt_other_command(self, runner, cli, default_config):
-        with mock.patch('slipstream.cli.api.Api.verify', side_effect=[False, True]):
+        with mock.patch('slipstream.cli.api.Api.login',
+                        side_effect=[UnauthorizedError, 'token1']):
             result = runner.invoke(cli, ['list'],
                                    input=("anonymous\npassword\n"
                                           "clara\ns3cr3t\n"))
@@ -86,10 +96,10 @@ class TestLogin(object):
         parser = configparser.RawConfigParser()
         parser.read(default_config.strpath)
         assert parser.get('slipstream', 'username') == 'clara'
-        assert parser.get('slipstream', 'password') == 's3cr3t'
+        assert parser.get('slipstream', 'token') == 'token1'
 
     def test_with_credentials(self, runner, cli, default_config):
-        with mock.patch('slipstream.cli.api.Api.verify', return_value=True):
+        with mock.patch('slipstream.cli.api.Api.login', return_value='token1'):
             result = runner.invoke(cli, ['login'], input=("alice\nh4x0r\n"))
 
         assert result.exit_code == 0
@@ -101,14 +111,14 @@ class TestLogin(object):
         parser = configparser.RawConfigParser()
         parser.read(default_config.strpath)
         assert parser.get('slipstream', 'username') == 'alice'
-        assert parser.get('slipstream', 'password') == 'h4x0r'
+        assert parser.get('slipstream', 'token') == 'token1'
 
     def test_with_config_and_profile(self, runner, cli, tmpdir):
         config = tmpdir.join('slipstreamconfig')
         config.write("[profile1]\nendpoint = https://example.com")
 
-        with mock.patch('slipstream.cli.api.Api.verify', return_value=True):
-            result = runner.invoke(cli, ['-p', 'profile1', '-c', config.strpath,
+        with mock.patch('slipstream.cli.api.Api.login', return_value='token1'):
+            result = runner.invoke(cli, ['-P', 'profile1', '-c', config.strpath,
                                          'login'],
                                    input=("bob\nstaple horse\n"))
 
@@ -121,8 +131,22 @@ class TestLogin(object):
         parser = configparser.RawConfigParser()
         parser.read(config.strpath)
         assert parser.get('profile1', 'username') == 'bob'
-        assert parser.get('profile1', 'password') == 'staple horse'
+        assert parser.get('profile1', 'token') == 'token1'
         assert parser.has_section('slipstream') is False
+
+    def test_with_options(self, runner, cli, default_config):
+        with mock.patch('slipstream.cli.api.Api.login', return_value='token1'):
+            result = runner.invoke(cli, ['login',
+                                         '-u', u'sébastien',
+                                         '-p', 'not_secure_at_all',
+                                         '--endpoint', 'http://127.0.0.1:8080'])
+
+        assert result.exit_code == 0
+        parser = configparser.RawConfigParser()
+        parser.read(default_config.strpath)
+        assert parser.get('slipstream', 'username') == u'sébastien'
+        assert parser.get('slipstream', 'token') == 'token1'
+        assert parser.get('slipstream', 'endpoint') == 'http://127.0.0.1:8080'
 
 
 class TestLogout(object):
@@ -145,7 +169,7 @@ class TestLogout(object):
         parser.read(default_config.strpath)
         with pytest.raises(configparser.NoOptionError):
             parser.get('slipstream', 'username')
-            parser.get('slipstream', 'password')
+            parser.get('slipstream', 'token')
 
 
 @pytest.mark.usefixtures('authenticated')

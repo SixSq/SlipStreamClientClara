@@ -2,11 +2,11 @@ from __future__ import unicode_literals
 
 import uuid
 
+from slipstream.cli import models
+
 import mock
 import pytest
-
 from click.testing import CliRunner
-from slipstream.cli import models
 
 
 @pytest.fixture(autouse=True)
@@ -30,16 +30,16 @@ def cli():
 @pytest.fixture(scope='function')
 def api():
     from slipstream.cli.api import Api
-    return Api(username='clara', password='s3cr3t')
+    return Api()
 
 
 @pytest.fixture(scope='function')
 def authenticated(request, default_config):
     default_config.write("[slipstream]\n"
                          "username = clara\n"
-                         "password = s3cr3t\n")
+                         "token = s3cr3t\n")
 
-    patcher = mock.patch('slipstream.cli.api.Api.verify', return_value=True)
+    patcher = mock.patch('slipstream.cli.api.Api.login', return_value='s3cr3t')
     def teardown():
         patcher.stop()
     request.addfinalizer(teardown)

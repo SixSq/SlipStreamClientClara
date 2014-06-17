@@ -1,6 +1,17 @@
 # -*- coding: utf-8 -*-
 from setuptools import setup, find_packages
+import sys
 
+install_requires = [
+    'click',
+    'defusedxml',
+    'prettytable',
+    'requests',
+    'six',
+]
+
+if sys.version_info < (3, 2):
+    install_requires.append('configparser')
 
 setup(
     name='slipstream-cli',
@@ -15,13 +26,7 @@ setup(
     zip_safe=False,
     license='Apache License, Version 2.0',
     include_package_data=True,
-    install_requires=[
-        'click',
-        'defusedxml',
-        'prettytable',
-        'requests',
-        'six',
-    ],
+    install_requires=install_requires,
     entry_points='''
     [console_scripts]
     slipstream=slipstream.cli:main

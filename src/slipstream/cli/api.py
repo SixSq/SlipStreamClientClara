@@ -28,20 +28,22 @@ def ElementTree__iter(root):
 
 class Api(object):
 
-    def __init__(self, username=None, password=None, endpoint=None):
+    def __init__(self, endpoint=None, token=None):
         self.endpoint = DEFAULT_ENDPOINT if endpoint is None else endpoint
         self.session = requests.Session()
-        self.session.auth = (username, password)
         self.session.headers.update({'Accept': 'application/xml'})
+        if token is not None:
+            cookie = 'com.sixsq.slipstream.cookie={0}'.format(token)
+            self.session.headers.update({'Cookie': cookie})
         self.session.verify = False
 
-    def verify(self):
-        response = self.session.get('%s/dashboard' % self.endpoint)
-        if response.status_code == requests.codes.ok:
-            return True
-        if response.status_code == 401:
-            return False
+    def login(self, username, password):
+        response = self.session.post('%s/login' % self.endpoint, data={
+            'username': username,
+            'password': password
+        })
         response.raise_for_status()
+        return self.session.cookies['com.sixsq.slipstream.cookie']
 
     def xml_get(self, url):
         response = self.session.get('%s%s' % (self.endpoint, url),
