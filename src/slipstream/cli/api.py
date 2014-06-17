@@ -103,7 +103,8 @@ class Api(object):
         return uuid.UUID(run_id)
 
     def terminate(self, run_id):
-        response = self.session.delete('%s/run/%s' % (self.endpoint, run_id))
+        response = self.session.delete('%s/run/%s' % (self.endpoint, run_id),
+                                       headers={'accept': 'application/xml'})
         response.raise_for_status()
         return True
 
