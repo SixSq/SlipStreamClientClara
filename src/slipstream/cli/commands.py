@@ -2,43 +2,42 @@ from __future__ import absolute_import, unicode_literals
 
 import configparser
 import sys
+import traceback
 
 import six
 from requests.exceptions import HTTPError
 
 import click
-from click._compat import get_text_stderr
 from prettytable import PrettyTable
 
 from . import __version__, types
 from .api import Api
-from .base import AliasedGroup, Config
+from .base import AliasedGroup, Config, pass_config
+from .log import logger
 
 try:
     from defusedxml import cElementTree as etree
 except ImportError:
     from defusedxml import ElementTree as etree
 
-pass_config = click.make_pass_decorator(Config)
-
-
-def echo_stderr(msg):
-    click.echo(msg, file=get_text_stderr())
-
-
 def _excepthook(exctype, value, tb):
     if exctype == HTTPError:
         if value.response.status_code == 401:
-            echo_stderr("Error: Invalid credentials provided. "
+            logger.fatal("Authentication token expired. "
+                        "Log in with `slipstream login`.")
+        elif value.response.status_code == 403:
+            logger.fatal("Invalid credentials provided. "
                         "Log in with `slipstream login`.")
         elif 'xml' in value.response.headers['content-type']:
             root = etree.fromstring(value.response.text)
-            echo_stderr(root.text)
+            logger.fatal(root.text)
         else:
-            echo_stderr(value)
+            logger.fatal(str(value))
     else:
-        import traceback
-        traceback.print_exception(exctype, value, tb)
+        logger.fatal(str(value))
+        out = six.StringIO()
+        traceback.print_exception(exctype, value, tb, file=out)
+        logger.info(out.getvalue())
 
 sys.excepthook = _excepthook
 
@@ -93,10 +92,20 @@ def config_set(ctx, param, value):
 @click.option('-e', '--endpoint', type=types.URL(), metavar='URL',
               callback=config_set, expose_value=False,
               help='The SlipStream endpoint to use')
+@click.option('-q', '--quiet', 'quiet', count=True, help="Give less output. "
+              "Option is additive, and can be used up to 3 times.")
+@click.option('-v', '--verbose', 'verbose', count=True, help="Give more output. "
+              "Option is additive, and can be used up to 3 times.")
 @click.version_option(version=__version__)
 @click.pass_context
-def cli(ctx, password):
+def cli(ctx, password, quiet, verbose):
     """SlipStream command line tool"""
+    # Configure logging
+    level = 1  # Notify
+    level += verbose
+    level -= quiet
+    logger.set_level(4 - level)
+
     # Attach Config object to context for subsequent use
     cfg = ctx.obj
 
@@ -141,12 +150,12 @@ def login(cfg, password):
         except HTTPError as e:
             if e.response.status_code != 401:
                 raise
-            click.echo("Invalid credentials provided.")
+            logger.warning("Invalid credentials provided.")
         else:
             should_prompt = False
 
     while should_prompt:
-        click.echo("Enter your SlipStream credentials.")
+        logger.notify("Enter your SlipStream credentials.")
         username = click.prompt("Username")
         password = click.prompt("Password (typing will be hidden)",
                                 hide_input=True)
@@ -156,14 +165,15 @@ def login(cfg, password):
         except HTTPError as e:
             if e.response.status_code != 401:
                 raise
-            click.echo("Authentication failed.")
+            logger.error("Authentication failed.")
         else:
             cfg.settings['username'] = username
             should_prompt = False
 
-    click.echo("Authentication successful.")
+    logger.notify("Authentication successful.")
     cfg.settings['token'] = token
     cfg.write_config()
+    logger.info("Local credentials saved.")
 
 
 @cli.command()
@@ -173,7 +183,7 @@ def logout(cfg):
     cfg.clear_setting('username')
     cfg.clear_setting('token')
     cfg.write_config()
-    click.echo("Local credentials cleared.")
+    logger.notify("Local credentials cleared.")
 
 
 @cli.group()
@@ -189,7 +199,7 @@ def list_applications(api):
     if apps:
         printtable(apps)
     else:
-        click.echo("No applications found.")
+        logger.warning("No applications found.")
 
 
 @list.command('runs', help="list runs")
@@ -199,7 +209,7 @@ def list_runs(api):
     if runs:
         printtable(runs)
     else:
-        click.echo("No runs found.")
+        logger.warning("No runs found.")
 
 
 @list.command('virtualmachines')
@@ -225,7 +235,7 @@ def list_virtualmachines(api, run_id, cloud, status):
     if vms:
         printtable(vms)
     else:
-        click.echo("No virtual machines found matching your criteria.")
+        logger.warning("No virtual machines found matching your criteria.")
 
 
 @cli.group()
@@ -280,7 +290,7 @@ def open_cmd(api, run_id):
 def terminate(api, run_id):
     """Terminate the given run UUID"""
     api.terminate(run_id)
-    click.echo("Run successfully terminated.")
+    logger.info("Run successfully terminated.")
 
 
 @cli.command()

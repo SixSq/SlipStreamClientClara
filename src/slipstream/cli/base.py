@@ -64,6 +64,8 @@ class Config(object):
             if self.profile != conf.DEFAULT_PROFILE:
                 raise
 
+pass_config = click.make_pass_decorator(Config)
+
 
 class AliasedGroup(click.Group):
     """This subclass of a group supports looking up aliases in a config
