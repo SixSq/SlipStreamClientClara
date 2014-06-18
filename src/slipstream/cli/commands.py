@@ -86,12 +86,12 @@ def config_set(ctx, param, value):
               help="The config file to use instead of the default.")
 @click.option('-u', '--username', metavar='USERNAME',
               callback=config_set, expose_value=False,
-              help="The SlipStream username to connect with")
+              help="The SlipStream username to connect with.")
 @click.option('-p', '--password', metavar='PASSWORD',
-              help="The SlipStream password to connect with")
+              help="The SlipStream password to connect with.")
 @click.option('-e', '--endpoint', type=types.URL(), metavar='URL',
               callback=config_set, expose_value=False,
-              help='The SlipStream endpoint to use')
+              help='The SlipStream endpoint to use.')
 @click.option('-q', '--quiet', 'quiet', count=True, help="Give less output. "
               "Option is additive, and can be used up to 3 times.")
 @click.option('-v', '--verbose', 'verbose', count=True, help="Give more output. "
@@ -99,7 +99,7 @@ def config_set(ctx, param, value):
 @click.version_option(version=__version__)
 @click.pass_context
 def cli(ctx, password, quiet, verbose):
-    """SlipStream command line tool"""
+    """SlipStream command line tool."""
     # Configure logging
     level = 1  # Notify
     level += verbose
@@ -123,7 +123,7 @@ def cli(ctx, password, quiet, verbose):
 @cli.command()
 @pass_config
 def aliases(cfg):
-    """List currently defined aliases"""
+    """List currently defined aliases."""
     for alias in sorted(six.iterkeys(cfg.aliases)):
         click.echo("%s=%s" % (alias, cfg.aliases[alias]))
 
@@ -139,7 +139,7 @@ def aliases(cfg):
               help='The SlipStream endpoint to use')
 @pass_config
 def login(cfg, password):
-    """Log in with your slipstream credentials"""
+    """Log in with your slipstream credentials."""
     should_prompt = True
     api = Api(cfg.settings['endpoint'])
     username = cfg.settings.get('username')
@@ -179,7 +179,7 @@ def login(cfg, password):
 @cli.command()
 @pass_config
 def logout(cfg):
-    """Clear local authentication credentials"""
+    """Clear local authentication credentials."""
     cfg.clear_setting('username')
     cfg.clear_setting('token')
     cfg.write_config()
@@ -192,9 +192,10 @@ def list():
     pass
 
 
-@list.command('applications', help="list available applications")
+@list.command('applications')
 @click.pass_obj
 def list_applications(api):
+    """List available applications."""
     apps = [app for app in api.list_applications()]
     if apps:
         printtable(apps)
@@ -221,7 +222,7 @@ def list_runs(api):
               help="The status to filter with.")
 @click.pass_obj
 def list_virtualmachines(api, run_id, cloud, status):
-    """List virtual machines filtered according to given options"""
+    """List virtual machines filtered according to given options."""
     def filter_func(vm):
         if run_id and vm.run_id != run_id:
             return False
@@ -240,7 +241,7 @@ def list_virtualmachines(api, run_id, cloud, status):
 
 @cli.group()
 def run():
-    """Run modules: image, deployment"""
+    """Run modules: image, deployment."""
     pass
 
 
@@ -252,7 +253,7 @@ def run():
 @click.argument('path', metavar='PATH', required=True)
 @click.pass_context
 def run_image(ctx, cloud, should_open, path):
-    """Run the image to the defined cloud"""
+    """Run the image to the defined cloud."""
     api = ctx.obj
     run_id = api.run_image(path, cloud)
     click.echo(run_id)
@@ -268,7 +269,7 @@ def run_image(ctx, cloud, should_open, path):
 @click.argument('path', metavar='PATH', nargs=1, required=True)
 @click.pass_context
 def run_deployment(ctx, should_open, params, path):
-    """Run a deployment"""
+    """Run a deployment."""
     api = ctx.obj
     run_id = api.run_deployment(path, params)
     click.echo(run_id)
@@ -280,7 +281,7 @@ def run_deployment(ctx, should_open, params, path):
 @click.argument('run_id', metavar='UUID', type=click.UUID)
 @click.pass_obj
 def open_cmd(api, run_id):
-    """Open the given run UUID in a web browser"""
+    """Open the given run UUID in a web browser."""
     click.launch("{0}/run/{1}".format(api.endpoint, run_id))
 
 
@@ -288,7 +289,7 @@ def open_cmd(api, run_id):
 @click.argument('run_id', metavar='UUID', type=click.UUID)
 @click.pass_obj
 def terminate(api, run_id):
-    """Terminate the given run UUID"""
+    """Terminate the given run UUID."""
     api.terminate(run_id)
     logger.info("Run successfully terminated.")
 
@@ -296,6 +297,6 @@ def terminate(api, run_id):
 @cli.command()
 @click.pass_obj
 def usage(api):
-    """List current usage and quota for user by cloud service"""
+    """List current usage and quota by cloud service."""
     items = [item for item in api.usage()]
     printtable(items)
