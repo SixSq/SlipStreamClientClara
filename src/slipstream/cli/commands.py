@@ -96,7 +96,8 @@ def config_set(ctx, param, value):
               "Option is additive, and can be used up to 3 times.")
 @click.option('-v', '--verbose', 'verbose', count=True, help="Give more output. "
               "Option is additive, and can be used up to 3 times.")
-@click.version_option(version=__version__)
+@click.version_option(__version__, '-V', '--version')
+@click.help_option('-h', '--help')
 @click.pass_context
 def cli(ctx, password, quiet, verbose):
     """SlipStream command line tool."""
