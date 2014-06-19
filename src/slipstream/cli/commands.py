@@ -35,9 +35,10 @@ def _excepthook(exctype, value, tb):
             logger.fatal(str(value))
     else:
         logger.fatal(str(value))
-        out = six.StringIO()
-        traceback.print_exception(exctype, value, tb, file=out)
-        logger.info(out.getvalue())
+
+    out = six.StringIO()
+    traceback.print_exception(exctype, value, tb, file=out)
+    logger.info(out.getvalue())
 
 sys.excepthook = _excepthook
 
