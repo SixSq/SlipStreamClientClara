@@ -194,6 +194,44 @@ class TestListApplications(object):
 
 
 @pytest.mark.usefixtures('authenticated')
+class TestListModules(object):
+
+    def test_list_all(self, runner, cli, apps):
+        with mock.patch('slipstream.cli.api.Api.list_modules',
+                        return_value=iter(apps)):
+            result = runner.invoke(cli, ['list', 'modules'])
+
+        assert result.exit_code == 0
+        assert 'wordpress' in result.output
+        assert 'ubuntu-12.04' in result.output
+
+    def test_empty(self, runner, cli):
+        with mock.patch('slipstream.cli.api.Api.list_modules',
+                        return_value=iter([])):
+            result = runner.invoke(cli, ['list', 'modules'])
+
+        assert result.exit_code == 0
+        assert result.output == "No modules found matching your criteria.\n"
+
+    def test_with_filter(self, runner, cli, apps):
+        with mock.patch('slipstream.cli.api.Api.list_modules',
+                        return_value=iter(apps)):
+            result = runner.invoke(cli, ['list', 'modules', '-k', 'image'])
+
+        assert result.exit_code == 0
+        assert 'wordpress' not in result.output
+        assert 'ubuntu-12.04' in result.output
+
+        with mock.patch('slipstream.cli.api.Api.list_modules',
+                        return_value=iter(apps)):
+            result = runner.invoke(cli, ['list', 'modules', '--type=deployment'])
+
+        assert result.exit_code == 0
+        assert 'wordpress' in result.output
+        assert 'ubuntu-12.04' not in result.output
+
+
+@pytest.mark.usefixtures('authenticated')
 class TestListRuns(object):
 
     def test_list_all(self, runner, cli, runs):

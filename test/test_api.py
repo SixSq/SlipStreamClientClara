@@ -54,6 +54,87 @@ def test_list_applications(api, apps):
     run()
 
 
+def test_list_modules(api):
+    @responses.activate
+    def list_root():
+        responses.add(responses.GET, 'https://slipstream.sixsq.com/module',
+                      body=load_fixture('module.xml'), status=200,
+                      content_type='application/xml')
+        modules = list(api.list_modules())
+        assert len(modules) == 1
+        assert modules[0].name == 'examples'
+
+    @responses.activate
+    def list_all():
+        responses.add(responses.GET, 'https://slipstream.sixsq.com/module',
+                      body=load_fixture('module.xml'), status=200,
+                      content_type='application/xml')
+        responses.add(responses.GET, 'https://slipstream.sixsq.com/module/examples/56',
+                      body=load_fixture('examples.xml'), status=200,
+                      content_type='application/xml')
+        responses.add(responses.GET, 'https://slipstream.sixsq.com/module/examples/images/57',
+                      body=load_fixture('images.xml'), status=200,
+                      content_type='application/xml')
+        responses.add(responses.GET, 'https://slipstream.sixsq.com/module/examples/tutorials/58',
+                      body=load_fixture('tutorials.xml'), status=200,
+                      content_type='application/xml')
+        responses.add(responses.GET, 'https://slipstream.sixsq.com/module/examples/tutorials/service-testing/60',
+                      body=load_fixture('service_testing.xml'), status=200,
+                      content_type='application/xml')
+        modules = list(api.list_modules(recurse=True))
+        assert len(modules) == 9
+        assert modules[0].name == 'examples'
+        assert modules[1].name == 'images'
+        assert modules[2].name == 'centos-6'
+        assert modules[3].name == 'ubuntu-12.04'
+        assert modules[4].name == 'tutorials'
+        assert modules[5].name == 'service-testing'
+        assert modules[6].name == 'apache'
+        assert modules[7].name == 'client'
+        assert modules[8].name == 'system'
+
+    @responses.activate
+    def list_path():
+        responses.add(responses.GET, 'https://slipstream.sixsq.com/module/examples',
+                      body=load_fixture('examples.xml'), status=200,
+                      content_type='application/xml')
+        modules = list(api.list_modules(path='examples'))
+        assert len(modules) == 2
+        assert modules[0].name == 'images'
+        assert modules[1].name == 'tutorials'
+
+    @responses.activate
+    def list_path_recursive():
+        responses.add(responses.GET, 'https://slipstream.sixsq.com/module/examples/56',
+                      body=load_fixture('examples.xml'), status=200,
+                      content_type='application/xml')
+        responses.add(responses.GET, 'https://slipstream.sixsq.com/module/examples/images/57',
+                      body=load_fixture('images.xml'), status=200,
+                      content_type='application/xml')
+        responses.add(responses.GET, 'https://slipstream.sixsq.com/module/examples/tutorials/58',
+                      body=load_fixture('tutorials.xml'), status=200,
+                      content_type='application/xml')
+        responses.add(responses.GET, 'https://slipstream.sixsq.com/module/examples/tutorials/service-testing/60',
+                      body=load_fixture('service_testing.xml'), status=200,
+                      content_type='application/xml')
+        modules = list(api.list_modules(path='examples/56', recurse=True))
+        assert len(modules) == 8
+        assert modules[0].name == 'images'
+        assert modules[1].name == 'centos-6'
+        assert modules[2].name == 'ubuntu-12.04'
+        assert modules[3].name == 'tutorials'
+        assert modules[4].name == 'service-testing'
+        assert modules[5].name == 'apache'
+        assert modules[6].name == 'client'
+        assert modules[7].name == 'system'
+
+
+    list_root()
+    list_all()
+    list_path()
+    list_path_recursive()
+
+
 def test_list_virtualmachines(api, vms):
     @responses.activate
     def run():

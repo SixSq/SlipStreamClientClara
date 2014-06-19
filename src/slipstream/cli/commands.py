@@ -205,6 +205,37 @@ def list_applications(api):
         logger.warning("No applications found.")
 
 
+@list.command('modules')
+@click.pass_obj
+@click.option('-k', '--type',
+              type=click.Choice(['deployment', 'image', 'project']),
+              help="Module type to only search for.")
+@click.option('-r', '--recurse', 'recurse', is_flag=True, default=False,
+              help="Recursively list submodules encountered.")
+@click.argument('path', required=False)
+def list_modules(api, type, recurse, path):
+    """List available modules starting from PATH.
+
+    If PATH is not given, starts from root module.
+    """
+    def filter_func(module):
+        if type is not None and module.type != type:
+            return False
+        return True
+
+    try:
+        modules = [module for module in api.list_modules(path, recurse)
+                   if filter_func(module)]
+    except HTTPError as e:
+        if e.response.status_code == 404:
+            raise click.ClickException("Module '{0}' doesn't exists.".format(path))
+        raise
+    if modules:
+        printtable(modules)
+    else:
+        logger.warning("No modules found matching your criteria.")
+
+
 @list.command('runs', help="list runs")
 @click.pass_obj
 def list_runs(api):

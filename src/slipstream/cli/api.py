@@ -6,6 +6,7 @@ import requests
 
 from . import models
 from .conf import DEFAULT_ENDPOINT
+from .log import logger
 
 try:
     from defusedxml import cElementTree as etree
@@ -66,6 +67,47 @@ class Api(object):
                                  version=int(elem.get('version')),
                                  path=mod(elem.get('resourceUri'),
                                           with_version=False))
+
+    def list_modules(self, path=None, recurse=False):
+        logger.log(logger.VERBOSE_DEBUG, "Starting with path: {0}".format(path))
+        # Path normalization
+        if not path:
+            url = '/module'
+        else:
+            parts = path.strip('/').split('/')
+            if parts[0] == 'module':
+                del parts[0]
+            url = '/module/' + '/'.join(parts)
+        logger.log(logger.VERBOSE_DEBUG, "Using normalized URL: {0}".format(url))
+
+        try:
+            root = self.xml_get(url)
+        except requests.HTTPError as e:
+            if e.response.status_code == 403:
+                logger.debug("Access denied for path: {0}. Skipping.".format(path))
+                return
+            raise
+
+        for elem in ElementTree__iter(root)('item'):
+            # Compute module path
+            if elem.get('resourceUri'):
+                app_path = elem.get('resourceUri')
+            else:
+                app_path = "%s/%s" % (root.get('parentUri').strip('/'),
+                                      '/'.join([root.get('shortName'),
+                                                elem.get('name'),
+                                                elem.get('version')]))
+
+            logger.debug("Found module with path: {0}".format(app_path))
+            app = models.App(name=elem.get('name'),
+                             type=elem.get('category').lower(),
+                             version=int(elem.get('version')),
+                             path=mod(app_path, with_version=False))
+            yield app
+            if app.type == 'project' and recurse:
+                logger.debug("Recursing into path: {0}".format(app_path))
+                for app in self.list_modules(app_path, recurse):
+                    yield app
 
     def list_runs(self):
         root = self.xml_get('/run')
