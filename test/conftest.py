@@ -10,11 +10,18 @@ from click.testing import CliRunner
 
 
 @pytest.fixture(autouse=True)
-def default_config(monkeypatch, tmpdir):
-    config = tmpdir.join('.slipstreamconfig')
-    monkeypatch.setattr('slipstream.cli.conf.DEFAULT_CONFIG', config.strpath)
-    return config
+def config_file(monkeypatch, tmpdir):
+    config_file = tmpdir.join('config')
+    monkeypatch.setattr('slipstream.cli.conf.DEFAULT_CONFIG_FILE',
+                        config_file.strpath)
+    return config_file
 
+@pytest.fixture(autouse=True)
+def cookie_file(monkeypatch, tmpdir):
+    cookie_file = tmpdir.join('cookies.txt')
+    monkeypatch.setattr('slipstream.cli.conf.DEFAULT_COOKIE_FILE',
+                        cookie_file.strpath)
+    return cookie_file
 
 @pytest.fixture(scope='function')
 def runner():
@@ -28,18 +35,24 @@ def cli():
 
 
 @pytest.fixture(scope='function')
-def api():
+def api(cookie_file):
     from slipstream.cli.api import Api
-    return Api()
+    return Api(cookie_file=cookie_file.strpath)
 
 
 @pytest.fixture(scope='function')
-def authenticated(request, default_config):
-    default_config.write("[slipstream]\n"
-                         "username = clara\n"
-                         "token = s3cr3t\n")
+def authenticated(request, config_file, cookie_file):
+    config_file.write("[slipstream]\n""username = clara\n")
+    cookie_file.write("# Netscape HTTP Cookie File\n"
+                      "# http://curl.haxx.se/rfc/cookie_spec.html\n"
+                      "# This is a generated file!  Do not edit.\n\n"
+                      "slipstream.sixsq.com\tFALSE\t/\tFALSE\t\t"
+                      "com.sixsq.slipstream.cookie\tcom.sixsq.idtype=local&"
+                      "com.sixsq.identifier=clara&"
+                      "com.sixsq.expirydate=1403235417973&"
+                      "com.sixsq.signature=abcd1234")
 
-    patcher = mock.patch('slipstream.cli.api.Api.login', return_value='s3cr3t')
+    patcher = mock.patch('slipstream.cli.api.Api.login')
     def teardown():
         patcher.stop()
     request.addfinalizer(teardown)

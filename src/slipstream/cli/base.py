@@ -20,10 +20,11 @@ class Config(object):
             'deploy': 'run deployment',
         }
         self.settings = {
+            'cookie_file': conf.DEFAULT_COOKIE_FILE,
             'endpoint': conf.DEFAULT_ENDPOINT,
         }
 
-        self.filename = conf.DEFAULT_CONFIG if filename is None else filename
+        self.filename = conf.DEFAULT_CONFIG_FILE if filename is None else filename
         self.profile = conf.DEFAULT_PROFILE if profile is None else profile
         self.parser = configparser.ConfigParser(interpolation=None)
 
@@ -52,6 +53,11 @@ class Config(object):
         for setting in six.iteritems(self.settings):
             self.parser.set(self.profile, *setting)
 
+        # Create the $HOME/.slipstream dir if it doesn't exist
+        config_dir = os.path.dirname(self.filename)
+        if not os.path.isdir(config_dir):
+            os.mkdir(config_dir, stat.S_IRUSR | stat.S_IWUSR | stat.S_IXUSR)
+        # Save configuration into file
         with codecs.open(self.filename, 'wb', 'utf8') as fp:
             self.parser.write(fp)
         os.chmod(self.filename, stat.S_IRUSR | stat.S_IWUSR)

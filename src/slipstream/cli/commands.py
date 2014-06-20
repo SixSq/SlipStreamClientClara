@@ -1,6 +1,7 @@
 from __future__ import absolute_import, unicode_literals
 
 import configparser
+import os
 import sys
 import traceback
 
@@ -20,10 +21,11 @@ try:
 except ImportError:
     from defusedxml import ElementTree as etree
 
+
 def _excepthook(exctype, value, tb):
     if exctype == HTTPError:
         if value.response.status_code == 401:
-            logger.fatal("Authentication token expired. "
+            logger.fatal("Authentication cookie expired. "
                         "Log in with `slipstream login`.")
         elif value.response.status_code == 403:
             logger.fatal("Invalid credentials provided. "
@@ -111,15 +113,15 @@ def cli(ctx, password, quiet, verbose):
     # Attach Config object to context for subsequent use
     cfg = ctx.obj
 
-    if any(['login' in ctx.args, 'logout' in ctx.args, 'aliases' in ctx.args]):
+    if any(['login' in ctx.args, 'aliases' in ctx.args]):
         return
 
     # Ask for credentials to the user when (s)he hasn't provided some
-    if 'token' not in cfg.settings:
+    if not os.path.isfile(cfg.settings['cookie_file']) and 'logout' not in ctx.args:
         ctx.invoke(login, password)
 
     # Attach Api object to context for subsequent use
-    ctx.obj = Api(cfg.settings['endpoint'], cfg.settings['token'])
+    ctx.obj = Api(cfg.settings['endpoint'], cfg.settings['cookie_file'])
 
 
 @cli.command()
@@ -148,7 +150,7 @@ def login(cfg, password):
 
     if username and password:
         try:
-            token = api.login(username, password)
+            api.login(username, password)
         except HTTPError as e:
             if e.response.status_code != 401:
                 raise
@@ -163,7 +165,7 @@ def login(cfg, password):
                                 hide_input=True)
 
         try:
-            token = api.login(username, password)
+            api.login(username, password)
         except HTTPError as e:
             if e.response.status_code != 401:
                 raise
@@ -173,18 +175,15 @@ def login(cfg, password):
             should_prompt = False
 
     logger.notify("Authentication successful.")
-    cfg.settings['token'] = token
     cfg.write_config()
     logger.info("Local credentials saved.")
 
 
 @cli.command()
-@pass_config
-def logout(cfg):
+@click.pass_obj
+def logout(api):
     """Clear local authentication credentials."""
-    cfg.clear_setting('username')
-    cfg.clear_setting('token')
-    cfg.write_config()
+    api.logout()
     logger.notify("Local credentials cleared.")
 
 

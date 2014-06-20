@@ -1,11 +1,14 @@
 from __future__ import absolute_import
 
+import os
+import stat
 import uuid
 
 import requests
+from six.moves.urllib.parse import urlparse
+from six.moves.http_cookiejar import MozillaCookieJar
 
-from . import models
-from .conf import DEFAULT_ENDPOINT
+from . import conf, models
 from .log import logger
 
 try:
@@ -27,16 +30,44 @@ def ElementTree__iter(root):
                    root.getiterator)  # Python 2.6 compatibility
 
 
+class SessionStore(requests.Session):
+    """A ``requests.Session`` subclass implementing a file-based session store."""
+
+    def __init__(self, cookie_file=None):
+        super(SessionStore, self).__init__()
+        if cookie_file is None:
+            cookie_file = conf.DEFAULT_COOKIE_FILE
+        cookie_dir = os.path.dirname(cookie_file)
+        self.cookies = MozillaCookieJar(cookie_file)
+        # Create the $HOME/.slipstream dir if it doesn't exist
+        if not os.path.isdir(cookie_dir):
+            os.mkdir(cookie_dir, stat.S_IRUSR | stat.S_IWUSR | stat.S_IXUSR)
+        # Load existing cookies if the cookies.txt exists
+        if os.path.isfile(cookie_file):
+            self.cookies.load(ignore_discard=True)
+            self.cookies.clear_expired_cookies()
+
+    def request(self, *args, **kwargs):
+        response = super(SessionStore, self).request(*args, **kwargs)
+        self.cookies.save(ignore_discard=True)
+        return response
+
+    def clear(self, domain):
+        """Clear cookies for the specified domain."""
+        try:
+            self.cookies.clear(domain)
+            self.cookies.save()
+        except KeyError:
+            pass
+
+
 class Api(object):
 
-    def __init__(self, endpoint=None, token=None):
-        self.endpoint = DEFAULT_ENDPOINT if endpoint is None else endpoint
-        self.session = requests.Session()
-        self.session.headers.update({'Accept': 'application/xml'})
-        if token is not None:
-            cookie = 'com.sixsq.slipstream.cookie={0}'.format(token)
-            self.session.headers.update({'Cookie': cookie})
+    def __init__(self, endpoint=None, cookie_file=None):
+        self.endpoint = conf.DEFAULT_ENDPOINT if endpoint is None else endpoint
+        self.session = SessionStore(cookie_file)
         self.session.verify = False
+        self.session.headers.update({'Accept': 'application/xml'})
 
     def login(self, username, password):
         response = self.session.post('%s/login' % self.endpoint, data={
@@ -44,7 +75,12 @@ class Api(object):
             'password': password
         })
         response.raise_for_status()
-        return self.session.cookies['com.sixsq.slipstream.cookie']
+
+    def logout(self):
+        response = self.session.get('%s/logout' % self.endpoint)
+        response.raise_for_status()
+        url = urlparse(self.endpoint)
+        self.session.clear(url.netloc)
 
     def xml_get(self, url):
         response = self.session.get('%s%s' % (self.endpoint, url),

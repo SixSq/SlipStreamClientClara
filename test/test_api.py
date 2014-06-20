@@ -16,7 +16,7 @@ def load_fixture(filename):
     ).read()
 
 
-def test_login(api):
+def test_login(api, cookie_file):
     username = 'clara'
     password = 's3cr3t'
 
@@ -27,6 +27,7 @@ def test_login(api):
         with mock.patch.object(api.session, 'cookies'):
             api.login(username, password)
             assert api.session.cookies.__getitem__.calls_with('com.sixsq.slipstream.cookie')
+            assert api.session.cookies.save.called is True
 
         responses.reset()
         responses.add(responses.POST, 'https://slipstream.sixsq.com/login',
@@ -39,6 +40,18 @@ def test_login(api):
                       status=503)
         with pytest.raises(requests.HTTPError):
             api.login(username, password)
+
+    run()
+
+
+def test_logout(api):
+    @responses.activate
+    def run():
+        responses.add(responses.GET, 'https://slipstream.sixsq.com/logout',
+                      status=303)
+        with mock.patch.object(api, 'session'):
+            api.logout()
+            api.session.clear.assert_called_with('slipstream.sixsq.com')
 
     run()
 

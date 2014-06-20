@@ -2,6 +2,7 @@
 from __future__ import unicode_literals
 
 import configparser
+import sys
 import uuid
 
 import mock
@@ -24,8 +25,8 @@ class TestAlias(object):
         assert result.output == ("deploy=run deployment\n"
                                  "launch=run image\n")
 
-    def test_defined(self, runner, cli, default_config):
-        default_config.write("[alias]\nvms=list virtualmachines")
+    def test_defined(self, runner, cli, config_file):
+        config_file.write("[alias]\nvms=list virtualmachines")
 
         result = runner.invoke(cli, ['aliases'])
         assert result.exit_code == 0
@@ -56,9 +57,9 @@ class TestLogin(object):
         assert result.exception
         assert "Profile 'profile1' does not exists." in result.output
 
-    def test_no_credentials(self, runner, cli, default_config):
+    def test_no_credentials(self, runner, cli, config_file):
         with mock.patch('slipstream.cli.api.Api.login',
-                        side_effect=[UnauthorizedError, 'token1']):
+                        side_effect=[UnauthorizedError, None]):
             result = runner.invoke(cli, ['login'],
                                    input=("anonymous\npassword\n"
                                           "clara\ns3cr3t\n"))
@@ -73,13 +74,12 @@ class TestLogin(object):
                                      "Authentication successful.\n")
 
         parser = configparser.RawConfigParser()
-        parser.read(default_config.strpath)
+        parser.read(config_file.strpath)
         assert parser.get('slipstream', 'username') == 'clara'
-        assert parser.get('slipstream', 'token') == 'token1'
 
-    def test_prompt_other_command(self, runner, cli, default_config):
+    def test_prompt_other_command(self, runner, cli, config_file):
         with mock.patch('slipstream.cli.api.Api.login',
-                        side_effect=[UnauthorizedError, 'token1']):
+                        side_effect=[UnauthorizedError, None]):
             result = runner.invoke(cli, ['list'],
                                    input=("anonymous\npassword\n"
                                           "clara\ns3cr3t\n"))
@@ -94,12 +94,11 @@ class TestLogin(object):
                                             "Authentication successful.\n")
 
         parser = configparser.RawConfigParser()
-        parser.read(default_config.strpath)
+        parser.read(config_file.strpath)
         assert parser.get('slipstream', 'username') == 'clara'
-        assert parser.get('slipstream', 'token') == 'token1'
 
-    def test_with_credentials(self, runner, cli, default_config):
-        with mock.patch('slipstream.cli.api.Api.login', return_value='token1'):
+    def test_with_credentials(self, runner, cli, config_file):
+        with mock.patch('slipstream.cli.api.Api.login'):
             result = runner.invoke(cli, ['login'], input=("alice\nh4x0r\n"))
 
         assert result.exit_code == 0
@@ -109,15 +108,14 @@ class TestLogin(object):
                                  "Authentication successful.\n")
 
         parser = configparser.RawConfigParser()
-        parser.read(default_config.strpath)
+        parser.read(config_file.strpath)
         assert parser.get('slipstream', 'username') == 'alice'
-        assert parser.get('slipstream', 'token') == 'token1'
 
     def test_with_config_and_profile(self, runner, cli, tmpdir):
         config = tmpdir.join('slipstreamconfig')
         config.write("[profile1]\nendpoint = https://example.com")
 
-        with mock.patch('slipstream.cli.api.Api.login', return_value='token1'):
+        with mock.patch('slipstream.cli.api.Api.login'):
             result = runner.invoke(cli, ['-P', 'profile1', '-c', config.strpath,
                                          'login'],
                                    input=("bob\nstaple horse\n"))
@@ -131,11 +129,10 @@ class TestLogin(object):
         parser = configparser.RawConfigParser()
         parser.read(config.strpath)
         assert parser.get('profile1', 'username') == 'bob'
-        assert parser.get('profile1', 'token') == 'token1'
         assert parser.has_section('slipstream') is False
 
-    def test_with_options(self, runner, cli, default_config):
-        with mock.patch('slipstream.cli.api.Api.login', return_value='token1'):
+    def test_with_options(self, runner, cli, config_file):
+        with mock.patch('slipstream.cli.api.Api.login'):
             result = runner.invoke(cli, ['login',
                                          '-u', u'sébastien',
                                          '-p', 'not_secure_at_all',
@@ -143,9 +140,8 @@ class TestLogin(object):
 
         assert result.exit_code == 0
         parser = configparser.RawConfigParser()
-        parser.read(default_config.strpath)
+        parser.read(config_file.strpath)
         assert parser.get('slipstream', 'username') == u'sébastien'
-        assert parser.get('slipstream', 'token') == 'token1'
         assert parser.get('slipstream', 'endpoint') == 'http://127.0.0.1:8080'
 
 
@@ -156,20 +152,21 @@ class TestLogout(object):
         assert result.exit_code == 0
         assert result.output == "Local credentials cleared.\n"
 
-    def test_with_credentials(self, runner, cli, default_config):
-        default_config.write("[slipstream]\n"
-                             "username = clara\n"
-                             "password=s3cr3t\n")
-
+    @pytest.mark.usefixtures("authenticated")
+    def test_with_credentials(self, runner, cli, cookie_file):
         result = runner.invoke(cli, ['logout'])
         assert result.exit_code == 0
         assert result.output == "Local credentials cleared.\n"
-
-        parser = configparser.RawConfigParser()
-        parser.read(default_config.strpath)
-        with pytest.raises(configparser.NoOptionError):
-            parser.get('slipstream', 'username')
-            parser.get('slipstream', 'token')
+        if sys.version_info < (2, 7):
+            assert cookie_file.read() == (
+                "# Netscape HTTP Cookie File\n"
+                "# http://www.netscape.com/newsref/std/cookie_spec.html\n"
+                "# This is a generated file!  Do not edit.\n\n")
+        else:
+            assert cookie_file.read() == (
+                "# Netscape HTTP Cookie File\n"
+                "# http://curl.haxx.se/rfc/cookie_spec.html\n"
+                "# This is a generated file!  Do not edit.\n\n")
 
 
 @pytest.mark.usefixtures('authenticated')
