@@ -323,6 +323,31 @@ class TestListVirtualMachines(object):
                                  "your criteria.\n")
 
 
+@pytest.mark.usefixtures("authenticated")
+class TestBuildImage(object):
+
+    def test_default(self, runner, cli):
+        run_id = uuid.uuid4()
+
+        with mock.patch('slipstream.cli.api.Api.build_image',
+                        return_value=run_id):
+            result = runner.invoke(cli, ['build', 'clara/centos-6'])
+
+        assert result.exit_code == 0
+        assert result.output == "%s\n" % run_id
+
+    def test_with_cloud(self, runner, cli):
+        run_id = uuid.uuid4()
+
+        with mock.patch('slipstream.cli.api.Api.build_image',
+                        return_value=run_id):
+            result = runner.invoke(cli, ['build', 'clara/centos-6',
+                                         '--cloud=cloud1'])
+
+        assert result.exit_code == 0
+        assert result.output == "%s\n" % run_id
+
+
 @pytest.mark.usefixtures('authenticated')
 class TestRunImage(object):
 

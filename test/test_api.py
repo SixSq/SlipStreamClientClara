@@ -170,6 +170,37 @@ def test_list_runs(api, runs):
     run()
 
 
+def test_build_image(api):
+    @responses.activate
+    def default():
+        url = 'https://slipstream.sixsq.com/run'
+        run_id = uuid.uuid4()
+        responses.add(responses.POST, url, status=201,
+                      adding_headers={'location': '%s/%s' % (url, run_id)})
+        assert api.build_image('clara/ubuntu-14.04') == run_id
+        call = responses.calls[0]
+        assert 'parameter--cloudservice=default' in call.request.body
+        assert 'type=Machine' in call.request.body
+        assert 'refqname=clara%2Fubuntu-14.04' in call.request.body
+
+    @responses.activate
+    def defined_cloud():
+        url = 'https://slipstream.sixsq.com/run'
+        run_id = uuid.uuid4()
+        responses.add(responses.POST, url, status=201,
+                      adding_headers={'location': '%s/%s' % (url, run_id)})
+
+        assert api.build_image('clara/ubuntu-14.04', cloud='cloud1') == run_id
+
+        call = responses.calls[0]
+        assert 'parameter--cloudservice=cloud1' in call.request.body
+        assert 'type=Machine' in call.request.body
+        assert 'refqname=clara%2Fubuntu-14.04' in call.request.body
+
+    default()
+    defined_cloud()
+
+
 def test_run_image(api):
     @responses.activate
     def default():

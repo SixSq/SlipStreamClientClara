@@ -272,6 +272,21 @@ def list_virtualmachines(api, run_id, cloud, status):
         logger.warning("No virtual machines found matching your criteria.")
 
 
+@cli.command()
+@click.option('--cloud', help="The cloud service to run the image with.")
+@click.option('--open', 'should_open', is_flag=True, default=False,
+              help="Open the created run in a web browser.")
+@click.argument('path', metavar='PATH', required=True)
+@click.pass_context
+def build(ctx, cloud, should_open, path):
+    """Build the given image PATH"""
+    api = ctx.obj
+    run_id = api.build_image(path, cloud)
+    click.echo(run_id)
+    if should_open:
+        ctx.invoke(open_cmd, run_id=run_id)
+
+
 @cli.group()
 def run():
     """Run modules: image, deployment."""
@@ -279,8 +294,7 @@ def run():
 
 
 @run.command('image')
-@click.option('--cloud',
-              help="The cloud service to run the image with.")
+@click.option('--cloud', help="The cloud service to run the image with.")
 @click.option('--open', 'should_open', is_flag=True, default=False,
               help="Open the created run in a web browser")
 @click.argument('path', metavar='PATH', required=True)

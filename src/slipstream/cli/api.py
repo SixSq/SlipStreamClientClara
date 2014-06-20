@@ -17,6 +17,13 @@ except ImportError:
     from defusedxml import ElementTree as etree
 
 
+def mod_url(path):
+    parts = path.strip('/').split('/')
+    if parts[0] == 'module':
+        del parts[0]
+    return '/module/' + '/'.join(parts)
+
+
 def mod(path, with_version=True):
     parts = path.split('/')
     if with_version:
@@ -110,10 +117,7 @@ class Api(object):
         if not path:
             url = '/module'
         else:
-            parts = path.strip('/').split('/')
-            if parts[0] == 'module':
-                del parts[0]
-            url = '/module/' + '/'.join(parts)
+            url = mod_url(path)
         logger.log(logger.VERBOSE_DEBUG, "Using normalized URL: {0}".format(url))
 
         try:
@@ -161,6 +165,17 @@ class Api(object):
                                         cloud=elem.get('cloud'),
                                         status=elem.get('state').lower(),
                                         run_id=uuid.UUID(elem.get('runUuid')))
+
+    def build_image(self, path, cloud=None):
+        response = self.session.post(self.endpoint + '/run', data={
+            'type': 'Machine',
+            'refqname': path,
+            'parameter--cloudservice': cloud or 'default',
+        })
+        response.raise_for_status()
+        run_id = response.headers['location'].split('/')[-1]
+        return uuid.UUID(run_id)
+
 
     def run_image(self, path, cloud=None):
         response = self.session.post(self.endpoint + '/run', data={
