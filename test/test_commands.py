@@ -63,15 +63,15 @@ class TestLogin(object):
             result = runner.invoke(cli, ['login'],
                                    input=("anonymous\npassword\n"
                                           "clara\ns3cr3t\n"))
-            assert result.exit_code == 0
-            assert result.output == ("Enter your SlipStream credentials.\n"
-                                     "Username: anonymous\n"
-                                     "Password (typing will be hidden): \n"
-                                     "Authentication failed.\n"
-                                     "Enter your SlipStream credentials.\n"
-                                     "Username: clara\n"
-                                     "Password (typing will be hidden): \n"
-                                     "Authentication successful.\n")
+        assert result.exit_code == 0
+        assert result.output == ("Enter your SlipStream credentials.\n"
+                                 "Username: anonymous\n"
+                                 "Password (typing will be hidden): \n"
+                                 "Authentication failed.\n"
+                                 "Enter your SlipStream credentials.\n"
+                                 "Username: clara\n"
+                                 "Password (typing will be hidden): \n"
+                                 "Authentication successful.\n")
 
         parser = configparser.RawConfigParser()
         parser.read(config_file.strpath)
@@ -83,15 +83,15 @@ class TestLogin(object):
             result = runner.invoke(cli, ['list'],
                                    input=("anonymous\npassword\n"
                                           "clara\ns3cr3t\n"))
-            assert result.exit_code == 0
-            assert result.output.startswith("Enter your SlipStream credentials.\n"
-                                            "Username: anonymous\n"
-                                            "Password (typing will be hidden): \n"
-                                            "Authentication failed.\n"
-                                            "Enter your SlipStream credentials.\n"
-                                            "Username: clara\n"
-                                            "Password (typing will be hidden): \n"
-                                            "Authentication successful.\n")
+        assert result.exit_code == 0
+        assert result.output.startswith("Enter your SlipStream credentials.\n"
+                                        "Username: anonymous\n"
+                                        "Password (typing will be hidden): \n"
+                                        "Authentication failed.\n"
+                                        "Enter your SlipStream credentials.\n"
+                                        "Username: clara\n"
+                                        "Password (typing will be hidden): \n"
+                                        "Authentication successful.\n")
 
         parser = configparser.RawConfigParser()
         parser.read(config_file.strpath)
@@ -100,8 +100,9 @@ class TestLogin(object):
     def test_with_credentials_other_command(self, runner, cli, config_file):
         with mock.patch('slipstream.cli.api.Api.login'):
             result = runner.invoke(cli, ['-u', 'alice', '-p', 'h4x0r', 'list'])
-            assert result.exit_code == 0
-            assert "Authentication successful.\n" not in result.output
+
+        assert result.exit_code == 0
+        assert "Authentication successful.\n" not in result.output
 
         parser = configparser.RawConfigParser()
         parser.read(config_file.strpath)
