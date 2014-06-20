@@ -97,6 +97,16 @@ class TestLogin(object):
         parser.read(config_file.strpath)
         assert parser.get('slipstream', 'username') == 'clara'
 
+    def test_with_credentials_other_command(self, runner, cli, config_file):
+        with mock.patch('slipstream.cli.api.Api.login'):
+            result = runner.invoke(cli, ['-u', 'alice', '-p', 'h4x0r', 'list'])
+            assert result.exit_code == 0
+            assert "Authentication successful.\n" not in result.output
+
+        parser = configparser.RawConfigParser()
+        parser.read(config_file.strpath)
+        assert parser.get('slipstream', 'username') == 'alice'
+
     def test_with_credentials(self, runner, cli, config_file):
         with mock.patch('slipstream.cli.api.Api.login'):
             result = runner.invoke(cli, ['login'], input=("alice\nh4x0r\n"))

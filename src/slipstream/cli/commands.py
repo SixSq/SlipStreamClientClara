@@ -117,7 +117,8 @@ def cli(ctx, password, quiet, verbose):
         return
 
     # Ask for credentials to the user when (s)he hasn't provided some
-    if not os.path.isfile(cfg.settings['cookie_file']) and 'logout' not in ctx.args:
+    if password or (not os.path.isfile(cfg.settings['cookie_file'])
+                    and 'logout' not in ctx.args):
         ctx.invoke(login, password)
 
     # Attach Api object to context for subsequent use
@@ -172,9 +173,9 @@ def login(cfg, password):
             logger.error("Authentication failed.")
         else:
             cfg.settings['username'] = username
+            logger.notify("Authentication successful.")
             should_prompt = False
 
-    logger.notify("Authentication successful.")
     cfg.write_config()
     logger.info("Local credentials saved.")
 
