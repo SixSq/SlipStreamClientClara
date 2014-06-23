@@ -167,7 +167,7 @@ class TestLogout(object):
         result = runner.invoke(cli, ['logout'])
         assert result.exit_code == 0
         assert result.output == "Local credentials cleared.\n"
-        if sys.version_info < (2, 7):
+        if sys.version_info < (2, 7, 7):
             assert cookie_file.read() == (
                 "# Netscape HTTP Cookie File\n"
                 "# http://www.netscape.com/newsref/std/cookie_spec.html\n"
