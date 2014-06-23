@@ -30,7 +30,8 @@ class NodeKeyValue(click.ParamType):
 
     def convert(self, value, param, ctx):
         try:
-            node, param = value.split(':')
-            return (node, tuple(param.split('=')))
+            node, param = value.split(':', 1)
+            return (node, tuple(param.split('=', 1)))
         except ValueError:
             self.fail("%s is not a valid NODE:KEY=VALUE value" % value, param, ctx)
+
