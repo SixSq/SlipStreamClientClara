@@ -1,6 +1,15 @@
 # -*- coding: utf-8 -*-
 from setuptools import setup, find_packages
+
+import ast
+import re
 import sys
+
+_version_re = re.compile(r'__version__\s+=\s+(.*)')
+
+with open('src/slipstream/cli/__init__.py', 'rb') as f:
+    version = str(ast.literal_eval(_version_re.search(
+        f.read().decode('utf-8')).group(1)))
 
 install_requires = [
     'click',
@@ -15,7 +24,7 @@ if sys.version_info < (3, 2):
 
 setup(
     name='slipstream-cli',
-    version='0.7.0',
+    version=version,
     author="Sebastien Fievet",
     author_email='sebastien@sixsq.com',
     url='https://github.com/slipstream/slipstream-cli',
