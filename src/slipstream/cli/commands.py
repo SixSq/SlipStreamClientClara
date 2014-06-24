@@ -347,3 +347,57 @@ def usage(api):
     """List current usage and quota by cloud service."""
     items = [item for item in api.usage()]
     printtable(items)
+
+
+@cli.command()
+@click.pass_obj
+@click.argument('path', metavar='PATH', nargs=1, required=True)
+@click.argument('version', metavar='VERSION', type=int, required=False)
+def publish(api, path, version):
+    """Publish the given module PATH and VERSION to the AppStore.
+    If VERSION is not given, assumes the latest one.
+
+    WARNING: you need to be a superuser to publish module.
+    """
+    if version is None:
+        version = api.get_module(path).version
+    try:
+        api.publish('%s/%s' % (path, version))
+    except HTTPError as e:
+        if e.response.status_code == 403:
+            raise click.Exception("Only superuser is allowed to publish.")
+        elif e.response.status_code == 404:
+            raise click.ClickException(
+                "Module '%s' #%d doesn't exists." % (path, version))
+        elif e.response.status_code == 409:
+            logger.warning(
+                "Module '%s' #%d is already published." % (path, version))
+        else:
+            raise
+    else:
+        logger.notify("Module '%s' #%d published." % (path, version))
+
+@cli.command()
+@click.pass_obj
+@click.argument('path', metavar='PATH', nargs=1, required=True)
+@click.argument('version', metavar='VERSION', type=int, required=False)
+def unpublish(api, path, version):
+    """Unpublish the given module PATH and VERSION to the AppStore.
+    If VERSION is not given, assumes the latest one.
+
+    WARNING: you need to be a superuser to publish module.
+    """
+    if version is None:
+        version = api.get_module(path).version
+    try:
+        api.unpublish('%s/%s' % (path, version))
+    except HTTPError as e:
+        if e.response.status_code == 403:
+            raise click.Exception("Only superuser is allowed to unpublish.")
+        elif e.response.status_code == 404:
+            raise click.ClickException(
+                "Module '%s' #%d doesn't exists." % (path, version))
+        else:
+            raise
+    else:
+        logger.notify("Module '%s' #%d unpublished." % (path, version))

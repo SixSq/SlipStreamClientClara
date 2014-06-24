@@ -9,12 +9,28 @@ import mock
 import pytest
 import requests
 
+from slipstream.cli import models
+
 
 class UnauthorizedError(requests.HTTPError):
 
     def __init__(self, *args, **kwargs):
         self.response = requests.Response()
         self.response.status_code = 401
+
+
+class NotFoundError(requests.HTTPError):
+
+    def __init__(self, *args, **kwargs):
+        self.response = requests.Response()
+        self.response.status_code = 404
+
+
+class ConflictError(requests.HTTPError):
+
+    def __init__(self, *args, **kwargs):
+        self.response = requests.Response()
+        self.response.status_code = 409
 
 
 class TestAlias(object):
@@ -398,3 +414,76 @@ class TestRunDeployment(object):
 
         assert result.exit_code == 0
         assert result.output == "%s\n" % run_id
+
+
+@pytest.mark.usefixtures('authenticated')
+class TestPublish(object):
+
+    app = models.App(name='foo', type='image', version=42, path='examples/foo')
+
+    def test_no_version(self, runner, cli):
+        with mock.patch('slipstream.cli.api.Api.publish'):
+            with mock.patch('slipstream.cli.api.Api.get_module',
+                            return_value=self.app):
+                result = runner.invoke(cli, ['publish', 'foo'])
+
+        assert result.exit_code == 0
+        assert result.output == "Module 'foo' #42 published.\n"
+
+    def test_with_version(self, runner, cli):
+        with mock.patch('slipstream.cli.api.Api.publish') as patcher:
+            result = runner.invoke(cli, ['publish', 'foo', '42'])
+            patcher.assert_called_with('foo/42')
+
+        assert result.exit_code == 0
+        assert result.output == "Module 'foo' #42 published.\n"
+
+    def test_not_exists(self, runner, cli):
+        with mock.patch('slipstream.cli.api.Api.publish',
+                        side_effect=NotFoundError):
+            result = runner.invoke(cli, ['publish', 'foo', '69'])
+
+        assert result.exit_code == 1
+        assert result.exception
+        assert result.output == "Error: Module 'foo' #69 doesn't exists.\n"
+
+    def test_already_published(self, runner, cli):
+        with mock.patch('slipstream.cli.api.Api.publish',
+                        side_effect=ConflictError):
+            result = runner.invoke(cli, ['publish', 'foo', '69'])
+
+        assert result.exit_code == 0
+        assert result.output == "Module 'foo' #69 is already published.\n"
+
+
+@pytest.mark.usefixtures('authenticated')
+class TestUnpublish(object):
+
+    app = models.App(name='foo', type='image', version=42, path='examples/foo')
+
+    def test_no_version(self, runner, cli):
+        with mock.patch('slipstream.cli.api.Api.unpublish'):
+            with mock.patch('slipstream.cli.api.Api.get_module',
+                            return_value=self.app):
+                result = runner.invoke(cli, ['unpublish', 'foo'])
+
+        assert result.exit_code == 0
+        assert result.output == "Module 'foo' #42 unpublished.\n"
+
+    def test_with_version(self, runner, cli):
+        with mock.patch('slipstream.cli.api.Api.unpublish') as patcher:
+            result = runner.invoke(cli, ['unpublish', 'foo', '42'])
+            patcher.assert_called_with('foo/42')
+
+        assert result.exit_code == 0
+        assert result.output == "Module 'foo' #42 unpublished.\n"
+
+    def test_not_exists(self, runner, cli):
+        with mock.patch('slipstream.cli.api.Api.unpublish',
+                        side_effect=NotFoundError):
+            result = runner.invoke(cli, ['unpublish', 'foo', '69'])
+
+        assert result.exit_code == 1
+        assert result.exception
+        assert result.output == "Error: Module 'foo' #69 doesn't exists.\n"
+

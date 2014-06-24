@@ -1,0 +1,89 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<imageModule category="Image" creation="2013-12-09 11:14:44.749 UTC" deleted="false" description="Minimal installation of the CentOS 6 operating system." imageId="c34bf3f0-318b-4d77-b0ca-f20585d05d32" isBase="true" isLatestVersion="true" lastModified="2014-06-24 10:22:23.371 UTC" loginUser="root" logoLink="http://blog.quadranet.com/wp-content/uploads/2014/01/centos.png" parentUri="module/examples/images" platform="centos" shortName="centos-6" version="479">
+   <parameters>
+      <entry>
+         <string>instanceid</string>
+         <parameter category="Output" description="Cloud instance id" isSet="false" mandatory="true" name="instanceid" order="0" order_="0" readonly="false" type="String"/>
+      </entry>
+      <entry>
+         <string>extra.disk.volatile</string>
+         <parameter category="Cloud" description="Volatile extra disk in GB" isSet="false" mandatory="true" name="extra.disk.volatile" order="0" order_="0" readonly="false" type="String"/>
+      </entry>
+      <entry>
+         <string>ec2-eu-west.instance.type</string>
+         <parameter category="ec2-eu-west" description="Cloud instance type" isSet="true" mandatory="true" name="ec2-eu-west.instance.type" order="0" order_="0" readonly="false" type="Enum">
+            <enumValues length="10">
+               <string>m1.small</string>
+               <string>m1.large</string>
+               <string>m1.xlarge</string>
+               <string>c1.medium</string>
+               <string>c1.xlarge</string>
+               <string>m2.xlarge</string>
+               <string>m2.2xlarge</string>
+               <string>m2.4xlarge</string>
+               <string>cc1.4xlarge</string>
+               <string>t1.micro</string>
+            </enumValues>
+            <value>m1.small</value>
+            <defaultValue>m1.small</defaultValue>
+         </parameter>
+      </entry>
+      <entry>
+         <string>exoscale-ch-gva.security.groups</string>
+         <parameter category="exoscale-ch-gva" description="Security Groups (comma separated list)" isSet="true" mandatory="true" name="exoscale-ch-gva.security.groups" order="0" order_="0" readonly="false" type="String">
+            <value>default</value>
+            <defaultValue>default</defaultValue>
+         </parameter>
+      </entry>
+      <entry>
+         <string>ec2-eu-west.security.group</string>
+         <parameter category="ec2-eu-west" description="Security groups (comma separated list)" isSet="true" mandatory="true" name="ec2-eu-west.security.group" order="0" order_="0" readonly="false" type="String">
+            <value>default</value>
+            <defaultValue>default</defaultValue>
+         </parameter>
+      </entry>
+      <entry>
+         <string>network</string>
+         <parameter category="Cloud" description="Network type" isSet="true" mandatory="true" name="network" order="0" order_="0" readonly="false" type="Enum">
+            <enumValues length="2">
+               <string>Public</string>
+               <string>Private</string>
+            </enumValues>
+            <value>Public</value>
+            <defaultValue>Public</defaultValue>
+         </parameter>
+      </entry>
+      <entry>
+         <string>exoscale-ch-gva.instance.type</string>
+         <parameter category="exoscale-ch-gva" description="Instance type (flavor)" isSet="true" mandatory="true" name="exoscale-ch-gva.instance.type" order="0" order_="0" readonly="false" type="String">
+            <value>Small</value>
+            <defaultValue>Small</defaultValue>
+         </parameter>
+      </entry>
+      <entry>
+         <string>hostname</string>
+         <parameter category="Output" description="hostname/ip of the image" isSet="false" mandatory="true" name="hostname" order="0" order_="0" readonly="false" type="String"/>
+      </entry>
+   </parameters>
+   <authz groupCreateChildren="false" groupDelete="false" groupGet="true" groupPost="true" groupPut="false" inheritedGroupMembers="true" owner="sixsq" ownerCreateChildren="true" ownerDelete="true" ownerGet="true" ownerPost="true" ownerPut="true" publicCreateChildren="false" publicDelete="false" publicGet="true" publicPost="true" publicPut="false">
+      <groupMembers/>
+   </authz>
+   <commit author="sixsq">
+      <comment>Add public build/run</comment>
+   </commit>
+   <published publicationDate="2014-06-24 10:22:23.371 UTC"/>
+   <cloudNames length="3">
+      <string>exoscale-ch-gva</string>
+      <string>ec2-eu-west</string>
+      <string>default</string>
+   </cloudNames>
+   <runs/>
+   <targets/>
+   <packages/>
+   <prerecipe/>
+   <recipe/>
+   <cloudImageIdentifiers>
+      <cloudImageIdentifier cloudImageIdentifier="c34bf3f0-318b-4d77-b0ca-f20585d05d32" cloudServiceName="exoscale-ch-gva"/>
+      <cloudImageIdentifier cloudImageIdentifier="ami-90dbd0e4" cloudServiceName="ec2-eu-west"/>
+   </cloudImageIdentifiers>
+</imageModule>

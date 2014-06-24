@@ -208,3 +208,23 @@ class Api(object):
             yield models.Usage(cloud=elem.get('cloud'),
                                usage=int(elem.get('currentUsage')),
                                quota=int(elem.get('quota')))
+
+    def get_module(self, path):
+        root = self.xml_get(mod_url(path))
+        return models.App(name=root.get('shortName'),
+                          type=root.get('category').lower(),
+                          version=int(root.get('version')),
+                          path=mod('%s/%s' % (root.get('parentUri').strip('/'),
+                                              root.get('shortName'))))
+
+    def publish(self, path):
+        response = self.session.put('%s%s/publish' % (self.endpoint,
+                                                      mod_url(path)))
+        response.raise_for_status()
+        return True
+
+    def unpublish(self, path):
+        response = self.session.delete('%s%s/publish' % (self.endpoint,
+                                                         mod_url(path)))
+        response.raise_for_status()
+        return True

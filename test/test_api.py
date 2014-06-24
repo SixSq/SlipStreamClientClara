@@ -9,6 +9,8 @@ import mock
 import pytest
 import responses
 
+from slipstream.cli import models
+
 
 def load_fixture(filename):
     return open(
@@ -295,5 +297,64 @@ def test_usage(api, usage):
                       body=load_fixture('dashboard.xml'), status=200,
                       content_type='application/xml')
         assert list(api.usage()) == usage
+
+    run()
+
+
+def test_get_module(api):
+    app = models.App(name='centos-6',
+                     type='image',
+                     version=479,
+                     path='examples/images/centos-6')
+
+    @responses.activate
+    def run():
+        responses.add(responses.GET, 'https://slipstream.sixsq.com/module/examples/images/centos-6',
+                      body=load_fixture('centos-6.xml'), status=200,
+                      content_type='application/xml')
+        assert api.get_module('examples/images/centos-6') == app
+
+        responses.reset()
+        responses.add(responses.GET, 'https://slipstream.sixsq.com/module/examples/images/centos-6/479',
+                      body=load_fixture('centos-6.xml'), status=200,
+                      content_type='application/xml')
+        assert api.get_module('examples/images/centos-6/479') == app
+
+        responses.reset()
+        responses.add(responses.GET, 'https://slipstream.sixsq.com/module/examples/images/centos-6',
+                      body=load_fixture('centos-6.xml'), status=200,
+                      content_type='application/xml')
+        assert api.get_module('module/examples/images/centos-6') == app
+
+        responses.reset()
+        responses.add(responses.GET, 'https://slipstream.sixsq.com/module/foo',
+                      status=404, content_type='application/xml')
+        with pytest.raises(requests.HTTPError):
+            api.get_module('foo')
+
+    run()
+
+
+def test_publish(api):
+    @responses.activate
+    def run():
+        responses.add(responses.PUT, 'https://slipstream.sixsq.com/module/examples/images/centos-6/publish',
+                      status=204, content_type='application/xml')
+        assert api.publish('examples/images/centos-6') is True
+
+        responses.reset()
+        responses.add(responses.PUT, 'https://slipstream.sixsq.com/module/examples/images/centos-6/publish',
+                      status=409, content_type='application/xml')
+        with pytest.raises(requests.HTTPError):
+           api.publish('examples/images/centos-6')
+
+    run()
+
+def test_unpublish(api):
+    @responses.activate
+    def run():
+        responses.add(responses.DELETE, 'https://slipstream.sixsq.com/module/examples/images/centos-6/publish',
+                      status=204, content_type='application/xml')
+        assert api.unpublish('examples/images/centos-6') is True
 
     run()
