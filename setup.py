@@ -27,10 +27,11 @@ setup(
     license='Apache License, Version 2.0',
     include_package_data=True,
     install_requires=install_requires,
-    entry_points='''
-    [console_scripts]
-    slipstream=slipstream.cli:main
-    ''',
+    entry_points={
+        'console_scripts': [
+            'slipstream=slipstream.cli:main',
+        ]
+    },
     classifiers=[
         'Intended Audience :: Developers',
         'Intended Audience :: System Administrators',
