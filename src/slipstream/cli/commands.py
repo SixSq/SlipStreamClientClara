@@ -377,6 +377,7 @@ def publish(api, path, version):
     else:
         logger.notify("Module '%s' #%d published." % (path, version))
 
+
 @cli.command()
 @click.pass_obj
 @click.argument('path', metavar='PATH', nargs=1, required=True)
