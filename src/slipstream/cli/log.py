@@ -12,7 +12,7 @@ class Logger(object):
     VERBOSE_DEBUG = logging.DEBUG - 1
     DEBUG = logging.DEBUG
     INFO = logging.INFO
-    NOTIFY = (logging.INFO + logging.WARN) / 2
+    NOTIFY = (logging.INFO + logging.WARNING) / 2
     WARNING = logging.WARNING
     ERROR = logging.ERROR
     FATAL = logging.FATAL

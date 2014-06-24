@@ -17,7 +17,7 @@ Run = collections.namedtuple('Run', [
     'cloud',
 ])
 
-VirtualMachine = collections.namedtuple('VirtualMachines', [
+VirtualMachine = collections.namedtuple('VirtualMachine', [
     'id',
     'cloud',
     'status',
