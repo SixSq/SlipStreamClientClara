@@ -359,3 +359,13 @@ def test_unpublish(api):
         assert api.unpublish('examples/images/centos-6') is True
 
     run()
+
+
+def test_delete_module(api):
+    @responses.activate
+    def run():
+        responses.add(responses.DELETE, 'https://slipstream.sixsq.com/module/examples/images/centos-6',
+                      status=204, content_type='application/xml')
+        assert api.delete_module('examples/images/centos-6') is True
+
+    run()

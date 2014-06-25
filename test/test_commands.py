@@ -487,3 +487,34 @@ class TestUnpublish(object):
         assert result.exception
         assert result.output == "Error: Module 'foo' #69 doesn't exists.\n"
 
+
+@pytest.mark.usefixtures('authenticated')
+class TestDeleteModule(object):
+
+    def test_no_version(self, runner, cli):
+        module = 'module/foo'
+        with mock.patch('slipstream.cli.api.Api.delete_module'):
+            result = runner.invoke(cli, ['delete', module])
+
+        assert result.exit_code == 0
+        assert result.output == "Deleted module %s\n" % module
+
+    def test_with_version(self, runner, cli):
+        module = 'module/foo'
+        version = '123'
+        with mock.patch('slipstream.cli.api.Api.delete_module'):
+            result = runner.invoke(cli, ['delete', module, version])
+
+        assert result.exit_code == 0
+        assert result.output == "Deleted module %s/%s\n" % (module, version)
+
+    def test_not_exists(self, runner, cli):
+        module = 'foo'
+        with mock.patch('slipstream.cli.api.Api.delete_module',
+                        side_effect=NotFoundError):
+            result = runner.invoke(cli, ['delete', module])
+
+        assert result.exit_code == 1
+        assert result.exception
+        assert result.output == "Error: Module %s done not exist.\n" % module
+

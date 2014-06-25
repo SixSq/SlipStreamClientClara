@@ -228,3 +228,9 @@ class Api(object):
                                                          mod_url(path)))
         response.raise_for_status()
         return True
+
+    def delete_module(self, path):
+        response = self.session.delete('%s%s' % (self.endpoint, mod_url(path)))
+
+        response.raise_for_status()
+        return True

@@ -402,3 +402,24 @@ def unpublish(api, path, version):
             raise
     else:
         logger.notify("Module '%s' #%d unpublished." % (path, version))
+
+
+@cli.command()
+@click.pass_obj
+@click.argument('path', metavar='PATH', nargs=1, required=True)
+@click.argument('version', metavar='VERSION', type=int, required=False)
+def delete(api, path, version):
+    """Delete a module.
+    """
+    logger.debug(path)
+    if version is not None:
+        path = '%s/%s' % (path, version)
+
+    try:
+        api.delete_module(path)
+    except HTTPError as e:
+        if e.response.status_code == 404:
+            raise click.ClickException("Module %s done not exist." % path)
+        raise
+
+    logger.notify('Deleted module %s' % path)
