@@ -346,9 +346,10 @@ def test_publish(api):
         responses.add(responses.PUT, 'https://slipstream.sixsq.com/module/examples/images/centos-6/publish',
                       status=409, content_type='application/xml')
         with pytest.raises(requests.HTTPError):
-           api.publish('examples/images/centos-6')
+            api.publish('examples/images/centos-6')
 
     run()
+
 
 def test_unpublish(api):
     @responses.activate

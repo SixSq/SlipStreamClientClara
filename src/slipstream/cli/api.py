@@ -33,12 +33,13 @@ def mod(path, with_version=True):
 
 
 def ElementTree__iter(root):
-    return getattr(root, 'iter',      # Python 2.7 and above
+    return getattr(root, 'iter',  # Python 2.7 and above
                    root.getiterator)  # Python 2.6 compatibility
 
 
 class SessionStore(requests.Session):
-    """A ``requests.Session`` subclass implementing a file-based session store."""
+    """A ``requests.Session`` subclass implementing a file-based session store.
+    """
 
     def __init__(self, cookie_file=None):
         super(SessionStore, self).__init__()
@@ -175,7 +176,6 @@ class Api(object):
         response.raise_for_status()
         run_id = response.headers['location'].split('/')[-1]
         return uuid.UUID(run_id)
-
 
     def run_image(self, path, cloud=None):
         response = self.session.post(self.endpoint + '/run', data={
