@@ -167,7 +167,7 @@ class TestLogin(object):
 
         assert result.exit_code == 0
         parser = configparser.RawConfigParser()
-        parser.read(config_file.strpath)
+        parser.read(config_file.strpath, encoding='utf8')
         assert parser.get('slipstream', 'username') == u'sébastien'
         assert parser.get('slipstream', 'endpoint') == 'http://127.0.0.1:8080'
 
