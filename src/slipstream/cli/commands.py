@@ -365,7 +365,7 @@ def publish(api, path, version):
         api.publish('%s/%s' % (path, version))
     except HTTPError as e:
         if e.response.status_code == 403:
-            raise click.Exception("Only superuser is allowed to publish.")
+            raise click.ClickException("Only superuser is allowed to publish.")
         elif e.response.status_code == 404:
             raise click.ClickException(
                 "Module '%s' #%d doesn't exists." % (path, version))
@@ -394,7 +394,7 @@ def unpublish(api, path, version):
         api.unpublish('%s/%s' % (path, version))
     except HTTPError as e:
         if e.response.status_code == 403:
-            raise click.Exception("Only superuser is allowed to unpublish.")
+            raise click.ClickException("Only superuser is allowed to unpublish.")
         elif e.response.status_code == 404:
             raise click.ClickException(
                 "Module '%s' #%d doesn't exists." % (path, version))
