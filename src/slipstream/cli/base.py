@@ -4,6 +4,8 @@ import codecs
 import configparser
 import os
 import stat
+import threading
+import weakref
 
 import six
 
@@ -12,21 +14,66 @@ import click
 from . import conf
 
 
+class PersistentSingleton(type):
+    ''' This class is meant to be used as a metaclass to transform a class into a singleton '''
+
+    _instances = {} #weakref.WeakValueDictionary()
+    _singleton_lock = threading.Lock()
+
+    def __call__(cls, *args, **kwargs):
+        with cls._singleton_lock:
+            if cls not in cls._instances:
+                instance = super(PersistentSingleton, cls).__call__(*args, **kwargs)
+                cls._instances[cls] = instance
+                return instance
+            return cls._instances[cls]
+
+
 class Config(object):
 
-    def __init__(self, filename=None, profile=None):
+    __metaclass__ = PersistentSingleton
+
+    def __init__(self, filename=None, profile=None, batch_mode=False):
         self.aliases = {
             'launch': 'run image',
             'deploy': 'run deployment',
-        }
-        self.settings = {
-            'cookie_file': conf.DEFAULT_COOKIE_FILE,
-            'endpoint': conf.DEFAULT_ENDPOINT,
+            'app-store': 'list applications'
         }
 
+        self.settings = {
+            'endpoint': conf.DEFAULT_ENDPOINT,
+            'insecure': False
+        }
+
+        self._profile = None
+
         self.filename = conf.DEFAULT_CONFIG_FILE if filename is None else filename
-        self.profile = conf.DEFAULT_PROFILE if profile is None else profile
         self.parser = configparser.ConfigParser(interpolation=None)
+        self.profile = profile
+        self.batch_mode = batch_mode
+
+    @property
+    def profile(self):
+        return conf.DEFAULT_PROFILE if self._profile is None else self._profile
+
+    @profile.setter
+    def profile(self, value):
+        self._profile = value if value is not None else conf.DEFAULT_PROFILE
+        self.set_default_cookie_file()
+
+    def set_default_cookie_file(self):
+        cookie_file_path = conf.COOKIE_FILE_PATH + \
+                           conf.COOKIE_FILE_NAME_FORMAT.format(profile=self.profile)
+        self.settings['cookie_file'] = os.path.expanduser(cookie_file_path)
+
+    @staticmethod
+    def parse_option(value):
+        if value is not None:
+            if value.lower() in ('1', 'yes', 'true', 'on'):
+                return True
+            elif value.lower() in ('0', 'no', 'false', 'off'):
+                return False
+        return value
 
     def read_config(self):
         if os.path.isfile(self.filename):
@@ -37,7 +84,8 @@ class Config(object):
         except configparser.NoSectionError:
             pass
         try:
-            self.settings.update(self.parser.items(self.profile))
+            for key, value in self.parser.items(self.profile):
+                self.settings[key] = self.parse_option(value)
         except configparser.NoSectionError:
             if self.profile != conf.DEFAULT_PROFILE:
                 raise
@@ -50,8 +98,8 @@ class Config(object):
 
         if not self.parser.has_section(self.profile):
             self.parser.add_section(self.profile)
-        for setting in six.iteritems(self.settings):
-            self.parser.set(self.profile, *setting)
+        for option, value in six.iteritems(self.settings):
+            self.parser.set(self.profile, option, str(value))
 
         # Create the $HOME/.slipstream dir if it doesn't exist
         config_dir = os.path.dirname(self.filename)
@@ -70,7 +118,7 @@ class Config(object):
             if self.profile != conf.DEFAULT_PROFILE:
                 raise
 
-pass_config = click.make_pass_decorator(Config)
+pass_config = click.make_pass_decorator(Config, True)
 
 
 class AliasedGroup(click.Group):

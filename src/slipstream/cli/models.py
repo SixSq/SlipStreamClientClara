@@ -26,6 +26,11 @@ VirtualMachine = collections.namedtuple('VirtualMachine', [
 
 Usage = collections.namedtuple('Usage', [
     'cloud',
-    'usage',
+    'run_usage',
+    'vm_usage',
+    'inactive_vm_usage',
+    'others_vm_usage',
+    'pending_vm_usage',
+    'unknown_vm_usage',
     'quota',
 ])

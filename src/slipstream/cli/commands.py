@@ -11,7 +11,7 @@ from requests.exceptions import HTTPError
 import click
 from prettytable import PrettyTable
 
-from . import __version__, types
+from . import __version__, types, conf
 from .api import Api
 from .base import AliasedGroup, Config, pass_config
 from .log import logger
@@ -40,7 +40,7 @@ def _excepthook(exctype, value, tb):
 
     out = six.StringIO()
     traceback.print_exception(exctype, value, tb, file=out)
-    logger.info(out.getvalue())
+    logger.debug(out.getvalue())
 
 sys.excepthook = _excepthook
 
@@ -78,15 +78,17 @@ def config_set(ctx, param, value):
         cfg.settings[param.name] = value
     return value
 
+click.disable_unicode_literals_warning = True
 
 @click.command(cls=AliasedGroup)
 @click.option('-P', '--profile', metavar='PROFILE',
               callback=use_profile, expose_value=False, is_eager=True,
-              help="The section to use from the config file instead of the "
-              "default.")
+              help="The config file section to use instead of '%s'."
+                   % conf.DEFAULT_PROFILE)
 @click.option('-c', '--config', type=click.Path(exists=True, dir_okay=False),
               callback=read_config, expose_value=False,
-              help="The config file to use instead of the default.")
+              help="The config file to use instead of '%s'."
+                   % conf.DEFAULT_CONFIG_FILE)
 @click.option('-u', '--username', metavar='USERNAME',
               callback=config_set, expose_value=False,
               help="The SlipStream username to connect with.")
@@ -95,23 +97,33 @@ def config_set(ctx, param, value):
 @click.option('-e', '--endpoint', type=types.URL(), metavar='URL',
               callback=config_set, expose_value=False,
               help='The SlipStream endpoint to use.')
-@click.option('-q', '--quiet', 'quiet', count=True, help="Give less output. "
-              "Option is additive, and can be used up to 3 times.")
-@click.option('-v', '--verbose', 'verbose', count=True, help="Give more output. "
-              "Option is additive, and can be used up to 3 times.")
+@click.option('-i', '--insecure', is_flag=True, flag_value=True,
+              callback=config_set, expose_value=False, default=False,
+              help="Do not fail if SSL security checks fail.")
+@click.option('-b', '--batch_mode', is_flag=True, flag_value=True,
+              expose_value=True, default=False,
+              help="Never enter interactive mode.")
+@click.option('-q', '--quiet', 'quiet', count=True,
+              help="Give less output. Can be used up to 3 times.")
+@click.option('-v', '--verbose', 'verbose', count=True,
+              help="Give more output. Can be used up to 4 times.")
 @click.version_option(__version__, '-V', '--version')
 @click.help_option('-h', '--help')
 @click.pass_context
-def cli(ctx, password, quiet, verbose):
+def cli(ctx, password, batch_mode, quiet, verbose):
     """SlipStream command line tool."""
     # Configure logging
-    level = 1  # Notify
-    level += verbose
-    level -= quiet
-    logger.set_level(4 - level)
+    level = 3  # Notify
+    level -= verbose
+    level += quiet
+    logger.set_level(level)
+    if level < 0:
+        logger.enable_http_logging()
 
     # Attach Config object to context for subsequent use
     cfg = ctx.obj
+
+    cfg.batch_mode = batch_mode
 
     if any(['login' in ctx.args, 'aliases' in ctx.args]):
         return
@@ -119,10 +131,10 @@ def cli(ctx, password, quiet, verbose):
     # Ask for credentials to the user when (s)he hasn't provided some
     if password or (not os.path.isfile(cfg.settings['cookie_file'])
                     and 'logout' not in ctx.args):
-        ctx.invoke(login, password)
+        ctx.invoke(login, password=password)
 
     # Attach Api object to context for subsequent use
-    ctx.obj = Api(cfg.settings['endpoint'], cfg.settings['cookie_file'])
+    ctx.obj = Api(cfg.settings['endpoint'], cfg.settings['cookie_file'], cfg.settings['insecure'])
 
 
 @cli.command()
@@ -130,7 +142,7 @@ def cli(ctx, password, quiet, verbose):
 def aliases(cfg):
     """List currently defined aliases."""
     for alias in sorted(six.iterkeys(cfg.aliases)):
-        click.echo("%s=%s" % (alias, cfg.aliases[alias]))
+        click.echo("%s => %s" % (alias, cfg.aliases[alias]))
 
 
 @cli.command()
@@ -145,24 +157,27 @@ def aliases(cfg):
 @pass_config
 def login(cfg, password):
     """Log in with your slipstream credentials."""
-    should_prompt = True
-    api = Api(cfg.settings['endpoint'])
+    should_prompt = True if not cfg.batch_mode else False
+    api = Api(cfg.settings['endpoint'], insecure=cfg.settings['insecure'])
     username = cfg.settings.get('username')
 
-    if username and password:
+    if (username and password) or cfg.batch_mode:
         try:
             api.login(username, password)
         except HTTPError as e:
             if e.response.status_code != 401:
                 raise
             logger.warning("Invalid credentials provided.")
+            if cfg.batch_mode:
+                exit(2)
         else:
             should_prompt = False
 
     while should_prompt:
         logger.notify("Enter your SlipStream credentials.")
-        username = click.prompt("Username")
-        password = click.prompt("Password (typing will be hidden)",
+        if username is None:
+            username = click.prompt("Username")
+        password = click.prompt("Password for '{}'".format(username),
                                 hide_input=True)
 
         try:

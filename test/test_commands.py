@@ -62,7 +62,7 @@ class TestAlias(object):
 
     def test_no_config(self, runner, cli):
         result = runner.invoke(cli, ['--config', 'config1', 'aliases'])
-        result.exit_code == 2
+        assert result.exit_code == 2
 
 
 class TestLogin(object):

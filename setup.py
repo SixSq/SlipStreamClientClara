@@ -15,6 +15,7 @@ install_requires = [
     'click',
     'defusedxml',
     'prettytable',
+    'urllib3[secure]',
     'requests',
     'six',
 ]

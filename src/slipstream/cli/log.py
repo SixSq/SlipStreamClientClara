@@ -48,10 +48,8 @@ class Logger(object):
         self.log(self.FATAL, msg, *args, **kwargs)
 
     def log(self, level, msg, *args, **kwargs):
-        if args:
-            if kwargs:
-                raise TypeError(
-                    "You may give positional or keyword arguments, not both")
+        if args and kwargs:
+            raise TypeError("You may give positional or keyword arguments, not both")
         args = args or kwargs
 
         # render
@@ -69,9 +67,23 @@ class Logger(object):
     def set_level(self, level):
         if level < 0:
             self.level = self.LEVELS[0]
-        elif level >= len(self.LEVELS):
+        elif level > len(self.LEVELS):
             self.level = self.LEVELS[-1]
         else:
             self.level = self.LEVELS[level]
+
+    def enable_http_logging(self):
+        try:
+            import httplib
+        except ImportError:
+            import http.client as httplib
+
+        httplib.HTTPConnection.debuglevel = 1
+
+        logging.basicConfig()
+        logging.getLogger().setLevel(logging.DEBUG)
+        requests_log = logging.getLogger('requests.packages.urllib3')
+        requests_log.setLevel(logging.DEBUG)
+        requests_log.propagate = True
 
 logger = Logger()

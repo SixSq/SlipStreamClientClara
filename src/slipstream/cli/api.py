@@ -71,14 +71,17 @@ class SessionStore(requests.Session):
 
 class Api(object):
 
-    def __init__(self, endpoint=None, cookie_file=None):
+    def __init__(self, endpoint=None, cookie_file=None, insecure=False):
         self.endpoint = conf.DEFAULT_ENDPOINT if endpoint is None else endpoint
         self.session = SessionStore(cookie_file)
-        self.session.verify = False
+        self.session.verify = (insecure == False)
         self.session.headers.update({'Accept': 'application/xml'})
+        if insecure:
+            requests.packages.urllib3.disable_warnings(
+                requests.packages.urllib3.exceptions.InsecureRequestWarning)
 
     def login(self, username, password):
-        response = self.session.post('%s/login' % self.endpoint, data={
+        response = self.session.post('%s/auth/login' % self.endpoint, data={
             'username': username,
             'password': password
         })
@@ -103,7 +106,7 @@ class Api(object):
         return response.json()
 
     def list_applications(self):
-        root = self.xml_get('/')
+        root = self.xml_get('/appstore')
         for elem in ElementTree__iter(root)('item'):
             if elem.get('published', False):
                 yield models.App(name=elem.get('name'),
@@ -162,10 +165,12 @@ class Api(object):
     def list_virtualmachines(self):
         root = self.xml_get('/vms')
         for elem in ElementTree__iter(root)('vm'):
-            yield models.VirtualMachine(id=uuid.UUID(elem.get('instanceId')),
+            run_id_str = elem.get('runUuid')
+            run_id = uuid.UUID(run_id_str) if run_id_str is not None else None
+            yield models.VirtualMachine(id=elem.get('instanceId'),
                                         cloud=elem.get('cloud'),
                                         status=elem.get('state').lower(),
-                                        run_id=uuid.UUID(elem.get('runUuid')))
+                                        run_id=run_id)
 
     def build_image(self, path, cloud=None):
         response = self.session.post(self.endpoint + '/run', data={
@@ -204,10 +209,15 @@ class Api(object):
 
     def usage(self):
         root = self.xml_get('/dashboard')
-        for elem in ElementTree__iter(root)('usageElement'):
+        for elem in ElementTree__iter(root)('cloudUsage'):
             yield models.Usage(cloud=elem.get('cloud'),
-                               usage=int(elem.get('currentUsage')),
-                               quota=int(elem.get('quota')))
+                               quota=int(elem.get('vmQuota')),
+                               run_usage=int(elem.get('userRunUsage')),
+                               vm_usage=int(elem.get('userVmUsage')),
+                               inactive_vm_usage=int(elem.get('userInactiveVmUsage')),
+                               others_vm_usage=int(elem.get('othersVmUsage')),
+                               pending_vm_usage=int(elem.get('pendingVmUsage')),
+                               unknown_vm_usage=int(elem.get('unknownVmUsage')))
 
     def get_module(self, path):
         root = self.xml_get(mod_url(path))

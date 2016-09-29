@@ -112,6 +112,6 @@ def runs():
 @pytest.fixture(scope='function')
 def usage():
     return [
-        models.Usage('exoscale-ch-gva', 1, 20),
-        models.Usage('ec2-eu-west', 0, 20),
+        models.Usage('exoscale-ch-gva', 1, 2, 0, 0, 0, 0, 20),
+        models.Usage('ec2-eu-west', 0, 0, 0, 0, 0, 1, 20),
     ]
