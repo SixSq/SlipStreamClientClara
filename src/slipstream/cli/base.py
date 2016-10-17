@@ -35,9 +35,13 @@ class Config(object):
 
     def __init__(self, filename=None, profile=None, batch_mode=False):
         self.aliases = {
-            'launch': 'run image',
-            'deploy': 'run deployment',
-            'app-store': 'list applications'
+            'ls': 'list',
+            'alias': 'aliases',
+            'app-store': 'appstore',
+            'launch': 'run',
+            'deploy': 'run',
+            'vms': 'virtualmachines',
+            'virtual-machines': 'virtualmachines'
         }
 
         self.settings = {

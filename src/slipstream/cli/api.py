@@ -31,6 +31,10 @@ def mod(path, with_version=True):
     else:
         return '/'.join(parts[1:-1])
 
+def get_module_type(category):
+    mapping = {'image': 'component',
+               'deployment': 'application'}
+    return mapping.get(category.lower(), category.lower())
 
 def ElementTree__iter(root):
     return getattr(root, 'iter',  # Python 2.7 and above
@@ -93,27 +97,48 @@ class Api(object):
         url = urlparse(self.endpoint)
         self.session.clear(url.netloc)
 
-    def xml_get(self, url):
+    def xml_get(self, url, **params):
         response = self.session.get('%s%s' % (self.endpoint, url),
-                                    headers={'Accept': 'application/xml'})
+                                    headers={'Accept': 'application/xml'},
+                                    params=params)
         response.raise_for_status()
         return etree.fromstring(response.text)
 
-    def json_get(self, url):
+    def json_get(self, url, **params):
         response = self.session.get('%s%s' % (self.endpoint, url),
-                                    headers={'Accept': 'application/json'})
+                                    headers={'Accept': 'application/json'},
+                                    params=params)
         response.raise_for_status()
         return response.json()
 
     def list_applications(self):
         root = self.xml_get('/appstore')
         for elem in ElementTree__iter(root)('item'):
-            if elem.get('published', False):
-                yield models.App(name=elem.get('name'),
-                                 type=elem.get('category').lower(),
-                                 version=int(elem.get('version')),
-                                 path=mod(elem.get('resourceUri'),
-                                          with_version=False))
+            yield models.App(name=elem.get('name'),
+                             type=get_module_type(elem.get('category')),
+                             version=int(elem.get('version')),
+                             path=mod(elem.get('resourceUri'),
+                                      with_version=False))
+
+    def get_module(self, path):
+        url = mod_url(path)
+        try:
+            root = self.xml_get(url)
+        except requests.HTTPError as e:
+            if e.response.status_code == 403:
+                logger.debug("Access denied for path: {0}. Skipping.".format(path))
+            raise
+
+        module = models.Module(name=root.get('shortName'),
+                               type=get_module_type(root.get('category')),
+                               created=root.get('creation'),
+                               modified=root.get('lastModified'),
+                               description=root.get('description'),
+                               version=int(root.get('version')),
+                               path=mod('%s/%s' % (root.get('parentUri').strip('/'),
+                                                   root.get('shortName'))))
+        return module
+        
 
     def list_modules(self, path=None, recurse=False):
         logger.log(logger.VERBOSE_DEBUG, "Starting with path: {0}".format(path))
@@ -144,7 +169,7 @@ class Api(object):
 
             logger.debug("Found module with path: {0}".format(app_path))
             app = models.App(name=elem.get('name'),
-                             type=elem.get('category').lower(),
+                             type=get_module_type(elem.get('category')),
                              version=int(elem.get('version')),
                              path=mod(app_path, with_version=False))
             yield app
@@ -153,8 +178,8 @@ class Api(object):
                 for app in self.list_modules(app_path, recurse):
                     yield app
 
-    def list_runs(self):
-        root = self.xml_get('/run')
+    def list_runs(self, inactive=False):
+        root = self.xml_get('/run', activeOnly=(not inactive))
         for elem in ElementTree__iter(root)('item'):
             yield models.Run(id=uuid.UUID(elem.get('uuid')),
                              module=mod(elem.get('moduleResourceUri')),
@@ -219,13 +244,13 @@ class Api(object):
                                pending_vm_usage=int(elem.get('pendingVmUsage')),
                                unknown_vm_usage=int(elem.get('unknownVmUsage')))
 
-    def get_module(self, path):
-        root = self.xml_get(mod_url(path))
-        return models.App(name=root.get('shortName'),
-                          type=root.get('category').lower(),
-                          version=int(root.get('version')),
-                          path=mod('%s/%s' % (root.get('parentUri').strip('/'),
-                                              root.get('shortName'))))
+    #def get_module(self, path):
+    #    root = self.xml_get(mod_url(path))
+    #    return models.App(name=root.get('shortName'),
+    #                      type=root.get('category').lower(),
+    #                      version=int(root.get('version')),
+    #                      path=mod('%s/%s' % (root.get('parentUri').strip('/'),
+    #                                          root.get('shortName'))))
 
     def publish(self, path):
         response = self.session.put('%s%s/publish' % (self.endpoint,

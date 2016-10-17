@@ -34,3 +34,14 @@ Usage = collections.namedtuple('Usage', [
     'unknown_vm_usage',
     'quota',
 ])
+
+Module = collections.namedtuple('Module', [
+    'name',
+    'type',
+    'created',
+    'modified',
+    'description',
+    'version',
+    'path',
+])
+

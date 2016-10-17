@@ -4,6 +4,7 @@ import configparser
 import os
 import sys
 import traceback
+import collections
 
 import six
 from requests.exceptions import HTTPError
@@ -134,15 +135,25 @@ def cli(ctx, password, batch_mode, quiet, verbose):
         ctx.invoke(login, password=password)
 
     # Attach Api object to context for subsequent use
-    ctx.obj = Api(cfg.settings['endpoint'], cfg.settings['cookie_file'], cfg.settings['insecure'])
+    ctx.obj = Api(cfg.settings['endpoint'], 
+                  cfg.settings['cookie_file'], 
+                  cfg.settings['insecure'])
 
 
 @cli.command()
 @pass_config
 def aliases(cfg):
     """List currently defined aliases."""
-    for alias in sorted(six.iterkeys(cfg.aliases)):
-        click.echo("%s => %s" % (alias, cfg.aliases[alias]))
+    Alias = collections.namedtuple('Alias', ['command', 'aliases'])
+
+    aliases = collections.defaultdict(lambda: [])
+    for alias_cmd, real_cmd in six.iteritems(cfg.aliases):
+        aliases[real_cmd].append(alias_cmd)
+    
+    aliases_table = [Alias(cmd, ', '.join(cmd_als))
+                     for cmd, cmd_als in six.iteritems(aliases)]
+
+    printtable(sorted(aliases_table, key=lambda x: x.command))
 
 
 @cli.command()
@@ -203,16 +214,10 @@ def logout(api):
     logger.notify("Local credentials cleared.")
 
 
-@cli.group()
-def list():
-    """List resources: apps, images, etc."""
-    pass
-
-
-@list.command('applications')
+@cli.command()
 @click.pass_obj
-def list_applications(api):
-    """List available applications."""
+def appstore(api):
+    """List available applications in the app store."""
     apps = [app for app in api.list_applications()]
     if apps:
         printtable(apps)
@@ -220,16 +225,16 @@ def list_applications(api):
         logger.warning("No applications found.")
 
 
-@list.command('modules')
+@cli.command('list')
 @click.pass_obj
 @click.option('-k', '--type',
-              type=click.Choice(['deployment', 'image', 'project']),
+              type=click.Choice(['application', 'component', 'project']),
               help="Module type to only search for.")
 @click.option('-r', '--recurse', 'recurse', is_flag=True, default=False,
               help="Recursively list submodules encountered.")
 @click.argument('path', required=False)
 def list_modules(api, type, recurse, path):
-    """List available modules starting from PATH.
+    """List project content.
 
     If PATH is not given, starts from root module.
     """
@@ -251,17 +256,20 @@ def list_modules(api, type, recurse, path):
         logger.warning("No modules found matching your criteria.")
 
 
-@list.command('runs', help="list runs")
+@cli.command('runs')
+@click.option('-i', '--inactive', 'inactive', is_flag=True, default=False,
+              help="Include inactive runs.")
 @click.pass_obj
-def list_runs(api):
-    runs = [run for run in api.list_runs()]
+def runs(api, inactive):
+    """List runs"""
+    runs = [run for run in api.list_runs(inactive)]
     if runs:
         printtable(runs)
     else:
         logger.warning("No runs found.")
 
 
-@list.command('virtualmachines')
+@cli.command()
 @click.option('--run', 'run_id', metavar='UUID', type=click.UUID,
               help="The run UUID to filter with.")
 @click.option('--cloud', metavar='CLOUD', type=click.STRING,
@@ -269,7 +277,7 @@ def list_runs(api):
 @click.option('--status', metavar='STATUS', type=click.STRING,
               help="The status to filter with.")
 @click.pass_obj
-def list_virtualmachines(api, run_id, cloud, status):
+def virtualmachines(api, run_id, cloud, status):
     """List virtual machines filtered according to given options."""
     def filter_func(vm):
         if run_id and vm.run_id != run_id:
@@ -294,7 +302,7 @@ def list_virtualmachines(api, run_id, cloud, status):
 @click.argument('path', metavar='PATH', required=True)
 @click.pass_context
 def build(ctx, cloud, should_open, path):
-    """Build the given image PATH"""
+    """Build the given image"""
     api = ctx.obj
     run_id = api.build_image(path, cloud)
     click.echo(run_id)
@@ -302,41 +310,54 @@ def build(ctx, cloud, should_open, path):
         ctx.invoke(open_cmd, run_id=run_id)
 
 
-@cli.group()
-def run():
-    """Run modules: image, deployment."""
-    pass
-
-
-@run.command('image')
+@cli.command()
 @click.option('--cloud', help="The cloud service to run the image with.")
 @click.option('--open', 'should_open', is_flag=True, default=False,
               help="Open the created run in a web browser")
-@click.argument('path', metavar='PATH', required=True)
-@click.pass_context
-def run_image(ctx, cloud, should_open, path):
-    """Run the image to the defined cloud."""
-    api = ctx.obj
-    run_id = api.run_image(path, cloud)
-    click.echo(run_id)
-    if should_open:
-        ctx.invoke(open_cmd, run_id=run_id)
-
-
-@run.command('deployment')
-@click.option('--open', 'should_open', is_flag=True, default=False,
-              help="Open the created run in a web browser.")
 @click.argument('params', type=types.NodeKeyValue(), metavar='NODE:KEY=VALUE',
                 nargs=-1, required=False)
 @click.argument('path', metavar='PATH', nargs=1, required=True)
 @click.pass_context
-def run_deployment(ctx, should_open, params, path):
-    """Run a deployment."""
+def run(ctx, cloud, should_open, params, path):
+    """Run a component or an application"""
     api = ctx.obj
-    run_id = api.run_deployment(path, params)
+    type = 'Unknown'
+
+    try:
+        type = api.get_module(path).type
+    except HTTPError as e:
+        if e.response.status_code == 404:
+            app = {app.name: app for app in api.list_applications()}.get(path)
+            if app is None:
+                raise
+            path = app.path
+            type = app.type
+
+    if type == 'application':
+        run_id = api.run_image(path, cloud)
+    elif type == 'component':
+        run_id = api.run_deployment(path, params)
+    else:
+        raise click.ClickException("Cannot run a '{}'.".format(type))
+
     click.echo(run_id)
     if should_open:
         ctx.invoke(open_cmd, run_id=run_id)
+
+
+@cli.command()
+@click.argument('path', metavar='PATH', nargs=1, required=True)
+@click.pass_obj
+def show(api, path):
+    """Show project, component, application details"""
+    module = api.get_module(path)
+
+    #import code; code.interact(local=locals())
+
+    if module:
+        printtable([module])
+    else:
+        logger.warning("Module not found.")
 
 
 @cli.command('open')
@@ -438,3 +459,5 @@ def delete(api, path, version):
         raise
 
     logger.notify('Deleted module %s' % path)
+
+
