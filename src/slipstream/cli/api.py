@@ -185,7 +185,7 @@ class Api(object):
                              module=mod(elem.get('moduleResourceUri')),
                              status=elem.get('status').lower(),
                              started_at=elem.get('startTime'),
-                             cloud=elem.get('cloudServiceName'))
+                             cloud=elem.get('cloudServiceNames'))
 
     def list_virtualmachines(self):
         root = self.xml_get('/vms')
