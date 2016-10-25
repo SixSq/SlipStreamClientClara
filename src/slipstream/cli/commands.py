@@ -334,9 +334,9 @@ def run(ctx, cloud, should_open, params, path):
             type = app.type
 
     if type == 'application':
-        run_id = api.run_image(path, cloud)
-    elif type == 'component':
         run_id = api.run_deployment(path, params)
+    elif type == 'component':
+        run_id = api.run_image(path, cloud)
     else:
         raise click.ClickException("Cannot run a '{}'.".format(type))
 
