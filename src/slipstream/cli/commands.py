@@ -311,14 +311,16 @@ def build(ctx, cloud, should_open, path):
 
 
 @cli.command()
-@click.option('--cloud', help="The cloud service to run the image with.")
+@click.option('--cloud', '-c', type=types.NodeKeyValue(), multiple=True, metavar='<node>:<cloud> or <cloud>',
+              help='Specify cloud service to be used.')
+@click.option('--param', '-p', type=types.NodeKeyValue(), multiple=True,
+              metavar='<node>:<param_name>=<value> or <param_name>=<value>',
+              help='Set application or component parameters.')
 @click.option('--open', 'should_open', is_flag=True, default=False,
               help="Open the created run in a web browser")
-@click.argument('params', type=types.NodeKeyValue(), metavar='NODE:KEY=VALUE',
-                nargs=-1, required=False)
 @click.argument('path', metavar='PATH', nargs=1, required=True)
 @click.pass_context
-def run(ctx, cloud, should_open, params, path):
+def run(ctx, cloud, param, should_open, path):
     """Run a component or an application"""
     api = ctx.obj
     type = 'Unknown'
@@ -332,14 +334,16 @@ def run(ctx, cloud, should_open, params, path):
                 raise
             path = app.path
             type = app.type
-
     if type == 'application':
-        run_id = api.run_deployment(path, params)
+        params = {'refqname': path}
     elif type == 'component':
-        run_id = api.run_image(path, cloud)
+        params = {'type': 'Run', 'refqname': path}
     else:
         raise click.ClickException("Cannot run a '{}'.".format(type))
 
+    params.update(dict(cloud))
+    params.update(dict(param))
+    run_id = api.run(params)
     click.echo(run_id)
     if should_open:
         ctx.invoke(open_cmd, run_id=run_id)
