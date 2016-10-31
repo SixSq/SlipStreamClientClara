@@ -29,7 +29,7 @@ setup(
     author="SixSq Sarl",
     author_email='support@sixsq.com',
     url='http://sixsq.com/slipstream',
-    description="A tool to useSlipStream.",
+    description="A tool to use SlipStream from shell or a script.",
     keywords='slipstream devops cli',
     package_dir={'': 'src'},
     packages=find_packages('src'),

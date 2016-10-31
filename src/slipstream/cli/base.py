@@ -79,6 +79,9 @@ class Config(object):
                 return False
         return value
 
+    def reset_config(self):
+        self.__init__()
+
     def read_config(self):
         if os.path.isfile(self.filename):
             with codecs.open(self.filename, encoding='utf8') as fp:

@@ -11,8 +11,7 @@ import responses
 
 from slipstream.cli import models
 
-import urllib3
-urllib3.disable_warnings()
+requests.packages.urllib3.disable_warnings()
 
 def load_fixture(filename):
     return open(
@@ -26,7 +25,7 @@ def test_login(api, cookie_file):
 
     @responses.activate
     def run():
-        responses.add(responses.POST, 'https://nuv.la/login',
+        responses.add(responses.POST, 'https://nuv.la/auth/login',
                       status=303)
         with mock.patch.object(api.session, 'cookies'):
             api.login(username, password)
@@ -34,13 +33,13 @@ def test_login(api, cookie_file):
             assert api.session.cookies.save.called is True
 
         responses.reset()
-        responses.add(responses.POST, 'https://nuv.la/login',
+        responses.add(responses.POST, 'https://nuv.la/auth/login',
                       status=401)
         with pytest.raises(requests.HTTPError):
             api.login(username, password)
 
         responses.reset()
-        responses.add(responses.POST, 'https://nuv.la/login',
+        responses.add(responses.POST, 'https://nuv.la/auth/login',
                       status=503)
         with pytest.raises(requests.HTTPError):
             api.login(username, password)
@@ -63,8 +62,8 @@ def test_logout(api):
 def test_list_applications(api, apps):
     @responses.activate
     def run():
-        responses.add(responses.GET, 'https://nuv.la/',
-                      body=load_fixture('index.xml'), status=200,
+        responses.add(responses.GET, 'https://nuv.la/appstore',
+                      body=load_fixture('appstore.xml'), status=200,
                       content_type='application/xml')
         assert list(api.list_applications()) == apps
 
@@ -212,7 +211,7 @@ def test_run_image(api):
         run_id = uuid.uuid4()
         responses.add(responses.POST, url, status=201,
                       adding_headers={'location': '%s/%s' % (url, run_id)})
-        assert api.run_image('clara/centos-6') == run_id
+        assert api.deploy()'clara/centos-6', {'refqname': path}) == run_id
         call = responses.calls[0]
         assert 'parameter--cloudservice=default' in call.request.body
         assert 'type=Run' in call.request.body
@@ -225,7 +224,7 @@ def test_run_image(api):
         responses.add(responses.POST, url, status=201,
                       adding_headers={'location': '%s/%s' % (url, run_id)})
 
-        assert api.run_image('clara/centos-6', cloud='cloud1') == run_id
+        assert api.run('clara/centos-6', cloud='cloud1') == run_id
 
         call = responses.calls[0]
         assert 'parameter--cloudservice=cloud1' in call.request.body
@@ -304,10 +303,13 @@ def test_usage(api, usage):
 
 
 def test_get_module(api):
-    app = models.App(name='centos-6',
-                     type='image',
-                     version=479,
-                     path='examples/images/centos-6')
+    app = models.Module(name='centos-6',
+                        type='component',
+                        version=479,
+                        path='examples/images/centos-6',
+                        created='2013-12-09 11:14:44.749 UTC',
+                        modified='2014-06-24 10:22:23.371 UTC',
+                        description='Minimal installation of the CentOS 6 operating system.')
 
     @responses.activate
     def run():

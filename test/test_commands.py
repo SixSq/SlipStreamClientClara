@@ -10,6 +10,11 @@ import pytest
 import requests
 
 from slipstream.cli import models
+from slipstream.cli.base import Config
+
+
+def setup_module(module):
+    Config().reset_config()
 
 
 class UnauthorizedError(requests.HTTPError):
@@ -38,27 +43,49 @@ class TestAlias(object):
     def test_common(self, runner, cli):
         result = runner.invoke(cli, ['aliases'])
         assert result.exit_code == 0
-        assert result.output == ("deploy=run deployment\n"
-                                 "launch=run image\n")
+        assert result.output == ("""+-----------------+-----------------------+
+| command         | aliases               |
++-----------------+-----------------------+
+| aliases         | alias                 |
+| appstore        | app-store             |
+| list            | ls                    |
+| run             | deploy, launch        |
+| virtualmachines | virtual-machines, vms |
++-----------------+-----------------------+
+""")
 
     def test_defined(self, runner, cli, config_file):
-        config_file.write("[alias]\nvms=list virtualmachines")
+        config_file.write("[alias]\nll=list")
 
         result = runner.invoke(cli, ['aliases'])
         assert result.exit_code == 0
-        assert result.output == ("deploy=run deployment\n"
-                                 "launch=run image\n"
-                                 "vms=list virtualmachines\n")
+        assert result.output == ("""+-----------------+-----------------------+
+| command         | aliases               |
++-----------------+-----------------------+
+| aliases         | alias                 |
+| appstore        | app-store             |
+| list            | ls, ll                |
+| run             | deploy, launch        |
+| virtualmachines | virtual-machines, vms |
++-----------------+-----------------------+
+""")
 
     def test_with_config(self, runner, cli, tmpdir):
         config = tmpdir.join('slipstreamconfig')
-        config.write("[alias]\napps=list apps")
+        config.write("[alias]\napps=appstore")
 
         result = runner.invoke(cli, ['--config', config.strpath, 'aliases'])
         assert result.exit_code == 0
-        assert result.output == ("apps=list apps\n"
-                                 "deploy=run deployment\n"
-                                 "launch=run image\n")
+        assert result.output == ("""+-----------------+-----------------------+
+| command         | aliases               |
++-----------------+-----------------------+
+| aliases         | alias                 |
+| appstore        | apps, app-store       |
+| list            | ls                    |
+| run             | deploy, launch        |
+| virtualmachines | virtual-machines, vms |
++-----------------+-----------------------+
+""")
 
     def test_no_config(self, runner, cli):
         result = runner.invoke(cli, ['--config', 'config1', 'aliases'])
@@ -79,7 +106,7 @@ class TestLogin(object):
             result = runner.invoke(cli, ['login'],
                                    input=("anonymous\npassword\n"
                                           "clara\ns3cr3t\n"))
-        assert result.exit_code == 0
+        assert result.exit_code == 3
         assert result.output == ("Enter your SlipStream credentials.\n"
                                  "Username: anonymous\n"
                                  "Password (typing will be hidden): \n"

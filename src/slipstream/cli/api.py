@@ -5,6 +5,7 @@ import stat
 import uuid
 
 import requests
+from six import string_types, integer_types
 from six.moves.urllib.parse import urlparse
 from six.moves.http_cookiejar import MozillaCookieJar
 
@@ -17,24 +18,26 @@ except ImportError:
     from defusedxml import ElementTree as etree
 
 
-def mod_url(path):
+def _mod_url(path):
     parts = path.strip('/').split('/')
     if parts[0] == 'module':
         del parts[0]
     return '/module/' + '/'.join(parts)
 
 
-def mod(path, with_version=True):
+def _mod(path, with_version=True):
     parts = path.split('/')
     if with_version:
         return '/'.join(parts[1:])
     else:
         return '/'.join(parts[1:-1])
 
+
 def get_module_type(category):
     mapping = {'image': 'component',
                'deployment': 'application'}
     return mapping.get(category.lower(), category.lower())
+
 
 def ElementTree__iter(root):
     return getattr(root, 'iter',  # Python 2.7 and above
@@ -42,8 +45,7 @@ def ElementTree__iter(root):
 
 
 class SessionStore(requests.Session):
-    """A ``requests.Session`` subclass implementing a file-based session store.
-    """
+    """A ``requests.Session`` subclass implementing a file-based session store."""
 
     def __init__(self, cookie_file=None):
         super(SessionStore, self).__init__()
@@ -74,6 +76,10 @@ class SessionStore(requests.Session):
 
 
 class Api(object):
+    """ This class is a Python wrapper&helper of the native SlipStream REST API"""
+
+    GLOBAL_PARAMETERS = ['bypass-ssh-check', 'refqname', 'keep-running', 'tags', 'mutable', 'type']
+    KEEP_RUNNING_VALUES = ['always', 'never', 'on-success', 'on-error']
 
     def __init__(self, endpoint=None, cookie_file=None, insecure=False):
         self.endpoint = conf.DEFAULT_ENDPOINT if endpoint is None else endpoint
@@ -85,6 +91,12 @@ class Api(object):
                 requests.packages.urllib3.exceptions.InsecureRequestWarning)
 
     def login(self, username, password):
+        """
+
+        :param username: 
+        :param password: 
+
+        """
         response = self.session.post('%s/auth/login' % self.endpoint, data={
             'username': username,
             'password': password
@@ -92,12 +104,19 @@ class Api(object):
         response.raise_for_status()
 
     def logout(self):
+        """ """
         response = self.session.get('%s/logout' % self.endpoint)
         response.raise_for_status()
         url = urlparse(self.endpoint)
         self.session.clear(url.netloc)
 
     def xml_get(self, url, **params):
+        """
+
+        :param url: 
+        :param **params: 
+
+        """
         response = self.session.get('%s%s' % (self.endpoint, url),
                                     headers={'Accept': 'application/xml'},
                                     params=params)
@@ -105,6 +124,12 @@ class Api(object):
         return etree.fromstring(response.text)
 
     def json_get(self, url, **params):
+        """
+
+        :param url: 
+        :param **params: 
+
+        """
         response = self.session.get('%s%s' % (self.endpoint, url),
                                     headers={'Accept': 'application/json'},
                                     params=params)
@@ -112,16 +137,22 @@ class Api(object):
         return response.json()
 
     def list_applications(self):
+        """ """
         root = self.xml_get('/appstore')
         for elem in ElementTree__iter(root)('item'):
             yield models.App(name=elem.get('name'),
                              type=get_module_type(elem.get('category')),
                              version=int(elem.get('version')),
-                             path=mod(elem.get('resourceUri'),
+                             path=_mod(elem.get('resourceUri'),
                                       with_version=False))
 
     def get_module(self, path):
-        url = mod_url(path)
+        """
+
+        :param path: 
+
+        """
+        url = _mod_url(path)
         try:
             root = self.xml_get(url)
         except requests.HTTPError as e:
@@ -135,18 +166,23 @@ class Api(object):
                                modified=root.get('lastModified'),
                                description=root.get('description'),
                                version=int(root.get('version')),
-                               path=mod('%s/%s' % (root.get('parentUri').strip('/'),
+                               path=_mod('%s/%s' % (root.get('parentUri').strip('/'),
                                                    root.get('shortName'))))
         return module
-        
 
     def list_modules(self, path=None, recurse=False):
+        """
+
+        :param path: (Default value = None)
+        :param recurse: (Default value = False)
+
+        """
         logger.log(logger.VERBOSE_DEBUG, "Starting with path: {0}".format(path))
         # Path normalization
         if not path:
             url = '/module'
         else:
-            url = mod_url(path)
+            url = _mod_url(path)
         logger.log(logger.VERBOSE_DEBUG, "Using normalized URL: {0}".format(url))
 
         try:
@@ -171,7 +207,7 @@ class Api(object):
             app = models.App(name=elem.get('name'),
                              type=get_module_type(elem.get('category')),
                              version=int(elem.get('version')),
-                             path=mod(app_path, with_version=False))
+                             path=_mod(app_path, with_version=False))
             yield app
             if app.type == 'project' and recurse:
                 logger.debug("Recursing into path: {0}".format(app_path))
@@ -179,15 +215,21 @@ class Api(object):
                     yield app
 
     def list_runs(self, inactive=False):
+        """
+
+        :param inactive: (Default value = False)
+
+        """
         root = self.xml_get('/run', activeOnly=(not inactive))
         for elem in ElementTree__iter(root)('item'):
             yield models.Run(id=uuid.UUID(elem.get('uuid')),
-                             module=mod(elem.get('moduleResourceUri')),
+                             module=_mod(elem.get('moduleResourceUri')),
                              status=elem.get('status').lower(),
                              started_at=elem.get('startTime'),
                              cloud=elem.get('cloudServiceNames'))
 
     def list_virtualmachines(self):
+        """ """
         root = self.xml_get('/vms')
         for elem in ElementTree__iter(root)('vm'):
             run_id_str = elem.get('runUuid')
@@ -198,6 +240,12 @@ class Api(object):
                                         run_id=run_id)
 
     def build_image(self, path, cloud=None):
+        """
+
+        :param path: 
+        :param cloud: (Default value = None)
+
+        """
         response = self.session.post(self.endpoint + '/run', data={
             'type': 'Machine',
             'refqname': path,
@@ -207,18 +255,83 @@ class Api(object):
         run_id = response.headers['location'].split('/')[-1]
         return uuid.UUID(run_id)
 
-    def run(self, params={}):
-        response = self.session.post(self.endpoint + '/run', data=params)
+    def deploy(self, path, cloud=None, parameters=None, tags=None, keep_running=None, scalable=False,
+               tolerate_failures=None, check_ssh_key=False, raw_params=None):
+        """
+        Run a component or an application
+        
+        :param path: The path of the component/application to deploy
+        :type path: str
+        :param cloud: A string or a dict to specify on which Cloud(s) to deploy the component/application.
+                      To deploy a component simply specify the Cloud name as a string.
+                      To deploy a deployment specify a dict with the nodenames as keys and Cloud names as values.
+                      If not specified the user default cloud will be used.
+        :type cloud: str or dict
+        :param parameters: A dict of parameters to redefine for this deployment.
+                           To redefine a parameter of a node use "<nodename>" as keys and dict of parameters as values.
+                           To redefine a parameter of a component or a global parameter use "<parametername>" as the key.
+        :type parameters: dict
+        :param tags: List of tags that can be used to identify or annotate a deployment
+        :type tags: str or list
+        :param keep_running: [Only apply to applications] Define when to terminate or not a deployment when it reach the
+                             'Ready' state. Possibles values: 'always', 'never', 'on-success', 'on-error'.
+                             If not specified the user default will be used.
+        :type keep_running: 'always' or 'never' or 'on-success' or 'on-error'
+        :param scalable: [Only apply to applications] True to start a scalable deployment. Default: False
+        :type scalable: bool
+        :param tolerate_failures: [Only apply to applications] A dict to specify how many failures to tolerate per node.
+                                  Nodenames as keys and number of failure to tolerate as values.
+        :type tolerate_failures: bool
+        :param check_ssh_key: Set it to True if you want the SlipStream server to check if you have a public ssh key
+                              defined in your user profile. Useful if you want to ensure you will have access to VMs.
+        :type check_ssh_key: bool
+        :param raw_params: This allows you to pass parameters directly in the request to the SlipStream server.
+                           Keys must be formatted in the format understood by the SlipStream server.
+        :type raw_params: dict
+
+        :return: The deployment UUID of the newly created deployment
+        :rtype: uuid.UUID
+        """
+
+        _raw_params = dict()
+        _raw_params.update(raw_params)
+        _raw_params.update(self._convert_parameters_to_raw_params(parameters))
+        _raw_params.update(self._convert_clouds_to_raw_params(cloud))
+        _raw_params.update(self._convert_tolerate_failures_to_raw_params(tolerate_failures))
+        _raw_params['refqname'] = path
+
+        if tags:
+            _raw_params['tags'] = tags
+
+        if keep_running:
+            if keep_running not in self.KEEP_RUNNING_VALUES:
+                raise ValueError('"keep_running" should be one of {}, not {}'.format(self.KEEP_RUNNING_VALUES,
+                                                                                     keep_running))
+            _raw_params['keep-running'] = keep_running
+
+        if scalable:
+            _raw_params['mutable'] = 'on'
+
+        if not check_ssh_key:
+            _raw_params['bypass-ssh-check'] = 'true'
+
+        response = self.session.post(self.endpoint + '/run', data=_raw_params)
         response.raise_for_status()
         run_id = response.headers['location'].split('/')[-1]
         return uuid.UUID(run_id)
 
     def terminate(self, run_id):
+        """
+
+        :param run_id: 
+
+        """
         response = self.session.delete('%s/run/%s' % (self.endpoint, run_id))
         response.raise_for_status()
         return True
 
     def usage(self):
+        """ """
         root = self.xml_get('/dashboard')
         for elem in ElementTree__iter(root)('cloudUsage'):
             yield models.Usage(cloud=elem.get('cloud'),
@@ -230,28 +343,92 @@ class Api(object):
                                pending_vm_usage=int(elem.get('pendingVmUsage')),
                                unknown_vm_usage=int(elem.get('unknownVmUsage')))
 
-    #def get_module(self, path):
-    #    root = self.xml_get(mod_url(path))
-    #    return models.App(name=root.get('shortName'),
-    #                      type=root.get('category').lower(),
-    #                      version=int(root.get('version')),
-    #                      path=mod('%s/%s' % (root.get('parentUri').strip('/'),
-    #                                          root.get('shortName'))))
-
     def publish(self, path):
+        """
+
+        :param path: 
+
+        """
         response = self.session.put('%s%s/publish' % (self.endpoint,
-                                                      mod_url(path)))
+                                                      _mod_url(path)))
         response.raise_for_status()
         return True
 
     def unpublish(self, path):
+        """
+
+        :param path: 
+
+        """
         response = self.session.delete('%s%s/publish' % (self.endpoint,
-                                                         mod_url(path)))
+                                                         _mod_url(path)))
         response.raise_for_status()
         return True
 
     def delete_module(self, path):
-        response = self.session.delete('%s%s' % (self.endpoint, mod_url(path)))
+        """
+
+        :param path: 
+
+        """
+        response = self.session.delete('%s%s' % (self.endpoint, _mod_url(path)))
 
         response.raise_for_status()
         return True
+
+    @staticmethod
+    def _check_type(obj_name, obj, allowed_types):
+        if not isinstance(obj, allowed_types):
+            raise ValueError('Invalid type "{}" for "{}"'.format(type(obj), obj_name))
+
+    @classmethod
+    def _convert_clouds_to_raw_params(cls, clouds):
+        return cls._convert_per_node_parameter_to_raw_params('cloudservice', clouds, allowed_types=string_types)
+
+    @classmethod
+    def _convert_tolerate_failures_to_raw_params(cls, tolerate_failures):
+        return cls._convert_per_node_parameter_to_raw_params('max-provisioning-failures', tolerate_failures,
+                                                             allowed_types=(integer_types, string_types))
+
+    @classmethod
+    def _convert_tolerate_failures_to_raw_params(cls, tolerate_failures):
+        return cls._convert_per_node_parameter_to_raw_params('max-provisioning-failures', tolerate_failures,
+                                                             allowed_types=(integer_types, string_types))
+
+    @classmethod
+    def _convert_per_node_parameter_to_raw_params(cls, parameter_name, parameter, allowed_types=(string_types, int),
+                                                  allow_no_node=True):
+        raw_params = dict()
+
+        if isinstance(parameter, dict):
+            for key, value in parameter.items():
+                cls._check_type('{}:{}'.format(key, parameter_name), value, allowed_types)
+                raw_params['parameter--node--{}--{}'.format(key, parameter_name)] = value
+        elif allow_no_node:
+            cls._check_type(parameter_name, parameter, allowed_types)
+            raw_params['parameter--{}'.format(parameter_name)] = parameter
+        else:
+            cls._check_type(parameter_name, parameter, dict)
+
+        return raw_params
+
+    @classmethod
+    def _convert_parameters_to_raw_params(cls, parameters):
+        raw_params = dict()
+        for key, value in parameters.items():
+            if isinstance(value, dict):
+                # Redefine node parameters
+                for parameter_name, parameter_value in value.items():
+                    raw_params['parameter--node--{}--{}'.format(key, parameter_name)] = parameter_value
+            else:
+                if key in cls.GLOBAL_PARAMETERS:
+                    # Redefine a global parameter
+                    raw_params[key] = value
+                else:
+                    # Redefine a component parameter
+                    raw_params['parameter--{}'.format(key)] = value
+
+        return raw_params
+
+
+

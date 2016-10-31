@@ -20,3 +20,9 @@ pip-delete-this-directory.txt
 # Sphinx documentation
 docs/_build/
 
+# IntelliJ files
+.idea
+
+# Cache and temp file
+.cache
+

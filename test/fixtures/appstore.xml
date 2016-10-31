@@ -1,0 +1,12 @@
+<list>
+   <item class="com.sixsq.slipstream.module.ModuleViewPublished" resourceUri="module/apps/WordPress/wordpress/3842" category="Image" description="Installs and configures WordPress using Puppet" published="true" logoLink="https://nuv.la/images/modules-logos/wordpress.svg" version="3842" name="wordpress">
+      <authz owner="sixsq" ownerGet="true" ownerPut="true" ownerPost="true" ownerDelete="true" ownerCreateChildren="true" groupGet="true" groupPut="true" groupPost="true" groupDelete="false" groupCreateChildren="false" publicGet="true" publicPut="false" publicPost="true" publicDelete="false" publicCreateChildren="false" inheritedGroupMembers="true">
+         <groupMembers class="java.util.ArrayList"/>
+      </authz>
+   </item>
+   <item class="com.sixsq.slipstream.module.ModuleViewPublished" resourceUri="module/examples/images/ubuntu-14.04/4847" category="Image" description="Minimal installation of the Ubuntu 14.04 (LTS) operating system." published="true" logoLink="https://nuv.la/images/modules-logos/ubuntu.svg" version="4847" name="ubuntu-14.04">
+      <authz owner="sixsq" ownerGet="true" ownerPut="true" ownerPost="true" ownerDelete="true" ownerCreateChildren="true" groupGet="true" groupPut="true" groupPost="true" groupDelete="false" groupCreateChildren="false" publicGet="true" publicPut="false" publicPost="true" publicDelete="false" publicCreateChildren="false" inheritedGroupMembers="true">
+         <groupMembers class="java.util.ArrayList"/>
+      </authz>
+   </item>
+</list>

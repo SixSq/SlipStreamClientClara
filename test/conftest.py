@@ -3,11 +3,21 @@ from __future__ import unicode_literals
 import uuid
 
 from slipstream.cli import models
+from slipstream.cli.base import Config
 
 import mock
 import pytest
 from click.testing import CliRunner
 
+@pytest.yield_fixture(autouse=True)
+def ensure_config_is_reset_between_tests():
+    # Code that will run before the test.
+    Config().reset_config()
+
+    yield  # Run the test case
+
+    # Code that will run after the test.
+    Config().reset_config()
 
 @pytest.fixture(autouse=True)
 def config_file(monkeypatch, tmpdir):
@@ -62,10 +72,10 @@ def authenticated(request, config_file, cookie_file):
 @pytest.fixture(scope='function')
 def apps():
     return [
-        models.App(name="wordpress", type='deployment', version=478,
-                   path="examples/tutorials/wordpress/wordpress"),
-        models.App(name="ubuntu-12.04", type="image", version=480,
-                   path="examples/images/ubuntu-12.04"),
+        models.App(name="wordpress", type='component', version=3842,
+                   path="apps/WordPress/wordpress"),
+        models.App(name="ubuntu-14.04", type="component", version=4847,
+                   path="examples/images/ubuntu-14.04"),
     ]
 
 
@@ -73,12 +83,12 @@ def apps():
 def vms():
     return [
         models.VirtualMachine(
-            id=uuid.UUID('a087572b-e368-421a-8a25-ed67fcdfe202'),
+            id='a087572b-e368-421a-8a25-ed67fcdfe202',
             cloud="exoscale-ch-gva",
             status="running",
             run_id=uuid.UUID('fa204c53-2d74-4fee-a76e-014e21ca3bd0')),
         models.VirtualMachine(
-            id=uuid.UUID('cac1725a-ee6d-45f4-bbf7-e67c0db7e64e'),
+            id='cac1725a-ee6d-45f4-bbf7-e67c0db7e64e',
             cloud="ec2-eu-west-1",
             status="terminated",
             run_id=uuid.UUID('e908ffdf-8445-4990-a781-e6f7d5e7044d')),
@@ -113,5 +123,6 @@ def runs():
 def usage():
     return [
         models.Usage('exoscale-ch-gva', 1, 2, 0, 0, 0, 0, 20),
-        models.Usage('ec2-eu-west', 0, 0, 0, 0, 0, 1, 20),
+        models.Usage('ec2-eu-west',     0, 0, 0, 2, 0, 0, 20),
+        models.Usage('All Clouds',      1, 2, 0, 2, 0, 0, 40),
     ]

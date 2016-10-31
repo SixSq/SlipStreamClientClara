@@ -1,7 +1,12 @@
 <dashboard>
-   <runs/>
-   <usage class="java.util.ArrayList">
-      <usageElement cloud="exoscale-ch-gva" quota="20" currentUsage="1"/>
-      <usageElement cloud="ec2-eu-west" quota="20" currentUsage="0"/>
-   </usage>
+   <clouds class="java.util.ArrayList">
+      <string>exoscale-ch-dk</string>
+      <string>exoscale-ch-gva</string>
+      <string>ec2-eu-west</string>
+   </clouds>
+   <cloudUsages class="java.util.ArrayList">
+      <cloudUsage cloud="exoscale-ch-gva" vmQuota="20" userRunUsage="1" userVmUsage="2" userInactiveVmUsage="0" othersVmUsage="0" pendingVmUsage="0" unknownVmUsage="0"/>
+      <cloudUsage cloud="ec2-eu-west" vmQuota="20" userRunUsage="0" userVmUsage="0" userInactiveVmUsage="0" othersVmUsage="2" pendingVmUsage="0" unknownVmUsage="0"/>
+      <cloudUsage cloud="All Clouds" vmQuota="40" userRunUsage="1" userVmUsage="2" userInactiveVmUsage="0" othersVmUsage="2" pendingVmUsage="0" unknownVmUsage="0"/>
+   </cloudUsages>
 </dashboard>

@@ -131,7 +131,8 @@ def cli(ctx, password, batch_mode, quiet, verbose):
 
     # Ask for credentials to the user when (s)he hasn't provided some
     if password or (not os.path.isfile(cfg.settings['cookie_file'])
-                    and 'logout' not in ctx.args):
+                    and 'logout' not in ctx.args
+                    and 'login' not in ctx.args):
         ctx.invoke(login, password=password)
 
     # Attach Api object to context for subsequent use
@@ -180,7 +181,7 @@ def login(cfg, password):
                 raise
             logger.warning("Invalid credentials provided.")
             if cfg.batch_mode:
-                exit(2)
+                sys.exit(3)
         else:
             should_prompt = False
 
@@ -320,8 +321,7 @@ def build(ctx, cloud, should_open, path):
               help="Open the created run in a web browser")
 @click.argument('path', metavar='PATH', nargs=1, required=True)
 @click.pass_context
-def run(ctx, cloud, param, should_open, path):
-    """Run a component or an application"""
+def deploy(ctx, cloud, param, should_open, path):
     api = ctx.obj
     type = 'Unknown'
 
@@ -334,16 +334,14 @@ def run(ctx, cloud, param, should_open, path):
                 raise
             path = app.path
             type = app.type
-    if type == 'application':
-        params = {'refqname': path}
-    elif type == 'component':
-        params = {'type': 'Run', 'refqname': path}
-    else:
+
+    if type not in ['application', 'component']:
         raise click.ClickException("Cannot run a '{}'.".format(type))
 
+    params = dict()
     params.update(dict(cloud))
     params.update(dict(param))
-    run_id = api.run(params)
+    run_id = api.deploy(path, raw_params=params)
     click.echo(run_id)
     if should_open:
         ctx.invoke(open_cmd, run_id=run_id)
