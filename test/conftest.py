@@ -1,6 +1,7 @@
 from __future__ import unicode_literals
 
 import uuid
+import tempfile
 
 from slipstream.cli import models
 from slipstream.cli.base import Config
@@ -12,12 +13,14 @@ from click.testing import CliRunner
 @pytest.yield_fixture(autouse=True)
 def ensure_config_is_reset_between_tests():
     # Code that will run before the test.
-    Config().reset_config()
+    conf = Config(tempfile.mktemp())
+    conf.reset_config()
+    conf.settings['cookie_file'] = tempfile.mktemp()
 
     yield  # Run the test case
 
     # Code that will run after the test.
-    Config().reset_config()
+    # [empty]
 
 @pytest.fixture(autouse=True)
 def config_file(monkeypatch, tmpdir):
@@ -52,11 +55,12 @@ def api(cookie_file):
 
 @pytest.fixture(scope='function')
 def authenticated(request, config_file, cookie_file):
-    config_file.write("[slipstream]\n""username = clara\n")
+    Config(config_file).settings['cookie_file'] = cookie_file.strpath
+    config_file.write("[nuvla]\n""username = clara\n")
     cookie_file.write("# Netscape HTTP Cookie File\n"
                       "# http://curl.haxx.se/rfc/cookie_spec.html\n"
                       "# This is a generated file!  Do not edit.\n\n"
-                      "slipstream.sixsq.com\tFALSE\t/\tFALSE\t\t"
+                      "nuv.la\tFALSE\t/\tFALSE\t\t"
                       "com.sixsq.slipstream.cookie\tcom.sixsq.idtype=local&"
                       "com.sixsq.identifier=clara&"
                       "com.sixsq.expirydate=1403235417973&"
@@ -72,7 +76,7 @@ def authenticated(request, config_file, cookie_file):
 @pytest.fixture(scope='function')
 def apps():
     return [
-        models.App(name="wordpress", type='component', version=3842,
+        models.App(name="wordpress", type='application', version=3842,
                    path="apps/WordPress/wordpress"),
         models.App(name="ubuntu-14.04", type="component", version=4847,
                    path="examples/images/ubuntu-14.04"),

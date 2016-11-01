@@ -204,17 +204,17 @@ def test_build_image(api):
     defined_cloud()
 
 
-def test_run_image(api):
+def test_run_component(api):
     @responses.activate
     def default():
         url = 'https://nuv.la/run'
         run_id = uuid.uuid4()
         responses.add(responses.POST, url, status=201,
                       adding_headers={'location': '%s/%s' % (url, run_id)})
-        assert api.deploy()'clara/centos-6', {'refqname': path}) == run_id
+        assert api.deploy('clara/centos-6') == run_id
         call = responses.calls[0]
-        assert 'parameter--cloudservice=default' in call.request.body
-        assert 'type=Run' in call.request.body
+        assert 'parameter--cloudservice=default' not in call.request.body
+        assert 'type=Run' not in call.request.body
         assert 'refqname=clara%2Fcentos-6' in call.request.body
 
     @responses.activate
@@ -224,27 +224,28 @@ def test_run_image(api):
         responses.add(responses.POST, url, status=201,
                       adding_headers={'location': '%s/%s' % (url, run_id)})
 
-        assert api.run('clara/centos-6', cloud='cloud1') == run_id
+        assert api.deploy('clara/centos-6', cloud='cloud1') == run_id
 
         call = responses.calls[0]
         assert 'parameter--cloudservice=cloud1' in call.request.body
-        assert 'type=Run' in call.request.body
+        assert 'type=Run' not in call.request.body
         assert 'refqname=clara%2Fcentos-6' in call.request.body
 
     default()
     defined_cloud()
 
 
-def test_run_deployment(api):
+def test_run_applicaition(api):
     @responses.activate
     def default():
         url = 'https://nuv.la/run'
         run_id = uuid.uuid4()
         responses.add(responses.POST, url, status=201,
                       adding_headers={'location': '%s/%s' % (url, run_id)})
-        assert api.run_deployment('clara/wordpress') == run_id
+        assert api.deploy('clara/wordpress') == run_id
         call = responses.calls[0]
-        assert call.request.body == 'refqname=clara%2Fwordpress'
+        assert 'refqname=clara%2Fwordpress' in call.request.body
+        assert 'bypass-ssh-check=true' in call.request.body
 
     @responses.activate
     def with_params():
@@ -253,12 +254,12 @@ def test_run_deployment(api):
         responses.add(responses.POST, url, status=201,
                       adding_headers={'location': '%s/%s' % (url, run_id)})
 
-        assert api.run_deployment(
+        assert api.deploy(
             path='clara/wordpress',
-            params=(
-                ('wp', ('cloudservice', 'cloud1')),
-                ('wp', ('multiplicity', 2))
-            )) == run_id
+            parameters={
+                'wp': {'cloudservice': 'cloud1',
+                       'multiplicity': 2}
+            }) == run_id
 
         call = responses.calls[0]
         assert 'parameter--node--wp--multiplicity=2' in call.request.body

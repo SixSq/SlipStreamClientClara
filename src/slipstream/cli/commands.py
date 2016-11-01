@@ -126,13 +126,15 @@ def cli(ctx, password, batch_mode, quiet, verbose):
 
     cfg.batch_mode = batch_mode
 
-    if any(['login' in ctx.args, 'aliases' in ctx.args]):
+    args = (ctx.args + ctx.protected_args + [ctx.invoked_subcommand])
+
+    if 'aliases' in args:
         return
 
     # Ask for credentials to the user when (s)he hasn't provided some
     if password or (not os.path.isfile(cfg.settings['cookie_file'])
-                    and 'logout' not in ctx.args
-                    and 'login' not in ctx.args):
+                    and 'logout' not in args
+                    and 'login' not in args):
         ctx.invoke(login, password=password)
 
     # Attach Api object to context for subsequent use
@@ -322,6 +324,7 @@ def build(ctx, cloud, should_open, path):
 @click.argument('path', metavar='PATH', nargs=1, required=True)
 @click.pass_context
 def deploy(ctx, cloud, param, should_open, path):
+    """ Deploy a component or an application """
     api = ctx.obj
     type = 'Unknown'
 

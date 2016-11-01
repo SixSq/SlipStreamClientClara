@@ -44,6 +44,13 @@ def ElementTree__iter(root):
                    root.getiterator)  # Python 2.6 compatibility
 
 
+class SlipStreamError(Exception):
+
+    def __init__(self, reason):
+        super(SlipStreamError, self).__init__(reason)
+        self.reason = reason
+
+
 class SessionStore(requests.Session):
     """A ``requests.Session`` subclass implementing a file-based session store."""
 
@@ -255,7 +262,7 @@ class Api(object):
         run_id = response.headers['location'].split('/')[-1]
         return uuid.UUID(run_id)
 
-    def deploy(self, path, cloud=None, parameters=None, tags=None, keep_running=None, scalable=False,
+    def deploy(self, path, cloud=None, parameters=None, tags=None, keep_running=None, scalable=False, multiplicity=None,
                tolerate_failures=None, check_ssh_key=False, raw_params=None):
         """
         Run a component or an application
@@ -275,13 +282,17 @@ class Api(object):
         :type tags: str or list
         :param keep_running: [Only apply to applications] Define when to terminate or not a deployment when it reach the
                              'Ready' state. Possibles values: 'always', 'never', 'on-success', 'on-error'.
+                             If scalable is set to True, this value is ignored and it will behave as if it was set to 'always'.
                              If not specified the user default will be used.
         :type keep_running: 'always' or 'never' or 'on-success' or 'on-error'
         :param scalable: [Only apply to applications] True to start a scalable deployment. Default: False
         :type scalable: bool
+        :param multiplicity: [Only apply to applications] A dict to specify how many instances to start per node.
+                             Nodenames as keys and number of instances to start as values.
+        :type multiplicity: bool
         :param tolerate_failures: [Only apply to applications] A dict to specify how many failures to tolerate per node.
                                   Nodenames as keys and number of failure to tolerate as values.
-        :type tolerate_failures: bool
+        :type tolerate_failures: dict
         :param check_ssh_key: Set it to True if you want the SlipStream server to check if you have a public ssh key
                               defined in your user profile. Useful if you want to ensure you will have access to VMs.
         :type check_ssh_key: bool
@@ -293,10 +304,10 @@ class Api(object):
         :rtype: uuid.UUID
         """
 
-        _raw_params = dict()
-        _raw_params.update(raw_params)
+        _raw_params = dict() if raw_params is None else raw_params
         _raw_params.update(self._convert_parameters_to_raw_params(parameters))
         _raw_params.update(self._convert_clouds_to_raw_params(cloud))
+        _raw_params.update(self._convert_multiplicity_to_raw_params(multiplicity))
         _raw_params.update(self._convert_tolerate_failures_to_raw_params(tolerate_failures))
         _raw_params['refqname'] = path
 
@@ -305,7 +316,7 @@ class Api(object):
 
         if keep_running:
             if keep_running not in self.KEEP_RUNNING_VALUES:
-                raise ValueError('"keep_running" should be one of {}, not {}'.format(self.KEEP_RUNNING_VALUES,
+                raise ValueError('"keep_running" should be one of {}, not "{}"'.format(self.KEEP_RUNNING_VALUES,
                                                                                      keep_running))
             _raw_params['keep-running'] = keep_running
 
@@ -316,6 +327,11 @@ class Api(object):
             _raw_params['bypass-ssh-check'] = 'true'
 
         response = self.session.post(self.endpoint + '/run', data=_raw_params)
+
+        if response.status_code == 409:
+            reason = etree.fromstring(response.text).get('detail')
+            raise SlipStreamError(reason)
+
         response.raise_for_status()
         run_id = response.headers['location'].split('/')[-1]
         return uuid.UUID(run_id)
@@ -386,8 +402,8 @@ class Api(object):
         return cls._convert_per_node_parameter_to_raw_params('cloudservice', clouds, allowed_types=string_types)
 
     @classmethod
-    def _convert_tolerate_failures_to_raw_params(cls, tolerate_failures):
-        return cls._convert_per_node_parameter_to_raw_params('max-provisioning-failures', tolerate_failures,
+    def _convert_multiplicity_to_raw_params(cls, multiplicity):
+        return cls._convert_per_node_parameter_to_raw_params('multiplicity', multiplicity,
                                                              allowed_types=(integer_types, string_types))
 
     @classmethod
@@ -396,25 +412,32 @@ class Api(object):
                                                              allowed_types=(integer_types, string_types))
 
     @classmethod
-    def _convert_per_node_parameter_to_raw_params(cls, parameter_name, parameter, allowed_types=(string_types, int),
+    def _convert_per_node_parameter_to_raw_params(cls, parameter_name, parameters, allowed_types=(string_types, int),
                                                   allow_no_node=True):
         raw_params = dict()
 
-        if isinstance(parameter, dict):
-            for key, value in parameter.items():
+        if parameters is None:
+            return raw_params
+
+        if isinstance(parameters, dict):
+            for key, value in parameters.items():
                 cls._check_type('{}:{}'.format(key, parameter_name), value, allowed_types)
                 raw_params['parameter--node--{}--{}'.format(key, parameter_name)] = value
         elif allow_no_node:
-            cls._check_type(parameter_name, parameter, allowed_types)
-            raw_params['parameter--{}'.format(parameter_name)] = parameter
+            cls._check_type(parameter_name, parameters, allowed_types)
+            raw_params['parameter--{}'.format(parameter_name)] = parameters
         else:
-            cls._check_type(parameter_name, parameter, dict)
+            cls._check_type(parameter_name, parameters, dict)
 
         return raw_params
 
     @classmethod
     def _convert_parameters_to_raw_params(cls, parameters):
         raw_params = dict()
+
+        if parameters is None:
+            return raw_params
+
         for key, value in parameters.items():
             if isinstance(value, dict):
                 # Redefine node parameters

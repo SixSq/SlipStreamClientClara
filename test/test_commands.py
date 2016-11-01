@@ -64,7 +64,7 @@ class TestAlias(object):
 +-----------------+-----------------------+
 | aliases         | alias                 |
 | appstore        | app-store             |
-| list            | ls, ll                |
+| list            | ll, ls                |
 | run             | deploy, launch        |
 | virtualmachines | virtual-machines, vms |
 +-----------------+-----------------------+
@@ -105,51 +105,51 @@ class TestLogin(object):
                         side_effect=[UnauthorizedError, None]):
             result = runner.invoke(cli, ['login'],
                                    input=("anonymous\npassword\n"
-                                          "clara\ns3cr3t\n"))
-        assert result.exit_code == 3
+                                          "s3cr3t\n"))
+        assert result.exit_code == 0
         assert result.output == ("Enter your SlipStream credentials.\n"
                                  "Username: anonymous\n"
-                                 "Password (typing will be hidden): \n"
+                                 "Password for 'anonymous': \n"
                                  "Authentication failed.\n"
                                  "Enter your SlipStream credentials.\n"
-                                 "Username: clara\n"
-                                 "Password (typing will be hidden): \n"
+                                 "Password for 'anonymous': \n"
                                  "Authentication successful.\n")
 
         parser = configparser.RawConfigParser()
         parser.read(config_file.strpath)
-        assert parser.get('slipstream', 'username') == 'clara'
+        assert parser.get('nuvla', 'username') == 'anonymous'
 
     def test_prompt_other_command(self, runner, cli, config_file):
         with mock.patch('slipstream.cli.api.Api.login',
                         side_effect=[UnauthorizedError, None]):
-            result = runner.invoke(cli, ['list'],
-                                   input=("anonymous\npassword\n"
-                                          "clara\ns3cr3t\n"))
+            with mock.patch('slipstream.cli.api.Api.list_modules'):
+                result = runner.invoke(cli, ['list'],
+                                       input=("anonymous\npassword\n"
+                                              "clara\ns3cr3t\n"))
         assert result.exit_code == 0
         assert result.output.startswith("Enter your SlipStream credentials.\n"
                                         "Username: anonymous\n"
-                                        "Password (typing will be hidden): \n"
+                                        "Password for 'anonymous': \n"
                                         "Authentication failed.\n"
                                         "Enter your SlipStream credentials.\n"
-                                        "Username: clara\n"
-                                        "Password (typing will be hidden): \n"
+                                        "Password for 'anonymous': \n"
                                         "Authentication successful.\n")
 
         parser = configparser.RawConfigParser()
         parser.read(config_file.strpath)
-        assert parser.get('slipstream', 'username') == 'clara'
+        assert parser.get('nuvla', 'username') == 'anonymous'
 
     def test_with_credentials_other_command(self, runner, cli, config_file):
         with mock.patch('slipstream.cli.api.Api.login'):
-            result = runner.invoke(cli, ['-u', 'alice', '-p', 'h4x0r', 'list'])
+            with mock.patch('slipstream.cli.api.Api.list_modules'):
+                result = runner.invoke(cli, ['-u', 'alice', '-p', 'h4x0r', 'list'])
 
         assert result.exit_code == 0
         assert "Authentication successful.\n" not in result.output
 
         parser = configparser.RawConfigParser()
         parser.read(config_file.strpath)
-        assert parser.get('slipstream', 'username') == 'alice'
+        assert parser.get('nuvla', 'username') == 'alice'
 
     def test_with_credentials(self, runner, cli, config_file):
         with mock.patch('slipstream.cli.api.Api.login'):
@@ -158,12 +158,12 @@ class TestLogin(object):
         assert result.exit_code == 0
         assert result.output == ("Enter your SlipStream credentials.\n"
                                  "Username: alice\n"
-                                 "Password (typing will be hidden): \n"
+                                 "Password for 'alice': \n"
                                  "Authentication successful.\n")
 
         parser = configparser.RawConfigParser()
         parser.read(config_file.strpath)
-        assert parser.get('slipstream', 'username') == 'alice'
+        assert parser.get('nuvla', 'username') == 'alice'
 
     def test_with_config_and_profile(self, runner, cli, tmpdir):
         config = tmpdir.join('slipstreamconfig')
@@ -177,27 +177,27 @@ class TestLogin(object):
         assert result.exit_code == 0
         assert result.output == ("Enter your SlipStream credentials.\n"
                                  "Username: bob\n"
-                                 "Password (typing will be hidden): \n"
+                                 "Password for 'bob': \n"
                                  "Authentication successful.\n")
 
         parser = configparser.RawConfigParser()
         parser.read(config.strpath)
         assert parser.get('profile1', 'username') == 'bob'
-        assert parser.has_section('slipstream') is False
+        assert parser.has_section('nuvla') is False
 
     def test_with_options(self, runner, cli, config_file):
         with mock.patch('slipstream.cli.api.Api.login'):
-            result = runner.invoke(cli, ['login',
-                                         '-u', u'sébastien',
+            result = runner.invoke(cli, ['-b',
+                                         'login',
+                                         '-u', u'toto',
                                          '-p', 'not_secure_at_all',
                                          '--endpoint', 'http://127.0.0.1:8080'])
 
         assert result.exit_code == 0
         parser = configparser.RawConfigParser()
         parser.read(config_file.strpath, encoding='utf8')
-        assert parser.get('slipstream', 'username') == u'sébastien'
-        assert parser.get('slipstream', 'endpoint') == 'http://127.0.0.1:8080'
-
+        assert parser.get('nuvla', 'username') == u'toto'
+        assert parser.get('nuvla', 'endpoint') == 'http://127.0.0.1:8080'
 
 class TestLogout(object):
 
@@ -224,42 +224,42 @@ class TestLogout(object):
 
 
 @pytest.mark.usefixtures('authenticated')
-class TestListApplications(object):
+class TestListAppStore(object):
 
     def test_list_all(self, runner, cli, apps):
         with mock.patch('slipstream.cli.api.Api.list_applications',
                         return_value=iter(apps)):
-            result = runner.invoke(cli, ['list', 'applications'])
+            result = runner.invoke(cli, ['-b', 'appstore'])
 
         assert result.exit_code == 0
         assert 'wordpress' in result.output
-        assert 'ubuntu-12.04' in result.output
+        assert 'ubuntu-14.04' in result.output
 
     def test_no_apps(self, runner, cli):
         with mock.patch('slipstream.cli.api.Api.list_applications',
                         return_value=iter([])):
-            result = runner.invoke(cli, ['list', 'applications'])
+            result = runner.invoke(cli, ['-b', 'appstore'])
 
         assert result.exit_code == 0
         assert result.output == "No applications found.\n"
 
 
 @pytest.mark.usefixtures('authenticated')
-class TestListModules(object):
+class TestList(object):
 
     def test_list_all(self, runner, cli, apps):
         with mock.patch('slipstream.cli.api.Api.list_modules',
                         return_value=iter(apps)):
-            result = runner.invoke(cli, ['list', 'modules'])
+            result = runner.invoke(cli, ['list'])
 
         assert result.exit_code == 0
         assert 'wordpress' in result.output
-        assert 'ubuntu-12.04' in result.output
+        assert 'ubuntu-14.04' in result.output
 
     def test_empty(self, runner, cli):
         with mock.patch('slipstream.cli.api.Api.list_modules',
                         return_value=iter([])):
-            result = runner.invoke(cli, ['list', 'modules'])
+            result = runner.invoke(cli, ['list'])
 
         assert result.exit_code == 0
         assert result.output == "No modules found matching your criteria.\n"
@@ -267,15 +267,15 @@ class TestListModules(object):
     def test_with_filter(self, runner, cli, apps):
         with mock.patch('slipstream.cli.api.Api.list_modules',
                         return_value=iter(apps)):
-            result = runner.invoke(cli, ['list', 'modules', '-k', 'image'])
+            result = runner.invoke(cli, ['list', '-k', 'component'])
 
         assert result.exit_code == 0
         assert 'wordpress' not in result.output
-        assert 'ubuntu-12.04' in result.output
+        assert 'ubuntu-14.04' in result.output
 
         with mock.patch('slipstream.cli.api.Api.list_modules',
                         return_value=iter(apps)):
-            result = runner.invoke(cli, ['list', 'modules', '--type=deployment'])
+            result = runner.invoke(cli, ['list', 'modules', '--type=application'])
 
         assert result.exit_code == 0
         assert 'wordpress' in result.output
@@ -288,7 +288,7 @@ class TestListRuns(object):
     def test_list_all(self, runner, cli, runs):
         with mock.patch('slipstream.cli.api.Api.list_runs',
                         return_value=iter(runs)):
-            result = runner.invoke(cli, ['list', 'runs'])
+            result = runner.invoke(cli, ['runs'])
 
         assert result.exit_code == 0
         assert '3fd93072-fcef-4c03-bdec-0cb2b19699e2' in result.output
@@ -298,7 +298,7 @@ class TestListRuns(object):
     def test_no_runs(self, runner, cli):
         with mock.patch('slipstream.cli.api.Api.list_runs',
                         return_value=iter([])):
-            result = runner.invoke(cli, ['list', 'runs'])
+            result = runner.invoke(cli, ['runs'])
 
         assert result.exit_code == 0
         assert result.output == "No runs found.\n"
@@ -310,7 +310,7 @@ class TestListVirtualMachines(object):
     def test_list_all(self, runner, cli, vms):
         with mock.patch('slipstream.cli.api.Api.list_virtualmachines',
                         return_value=iter(vms)):
-            result = runner.invoke(cli, ['list', 'virtualmachines'])
+            result = runner.invoke(cli, ['virtualmachines'])
 
         assert result.exit_code == 0
         assert 'a087572b-e368-421a-8a25-ed67fcdfe202' in result.output
@@ -319,7 +319,7 @@ class TestListVirtualMachines(object):
     def test_filter_by_run(self, runner, cli, vms):
         with mock.patch('slipstream.cli.api.Api.list_virtualmachines',
                         return_value=iter(vms)):
-            result = runner.invoke(cli, ['list', 'virtualmachines', '--run',
+            result = runner.invoke(cli, ['virtualmachines', '--run',
                                          'fa204c53-2d74-4fee-a76e-014e21ca3bd0'])
 
         assert result.exit_code == 0
@@ -329,7 +329,7 @@ class TestListVirtualMachines(object):
     def test_filter_by_cloud(self, runner, cli, vms):
         with mock.patch('slipstream.cli.api.Api.list_virtualmachines',
                         return_value=iter(vms)):
-            result = runner.invoke(cli, ['list', 'virtualmachines',
+            result = runner.invoke(cli, ['virtualmachines',
                                          '--cloud', 'ec2-eu-west-1'])
 
         assert result.exit_code == 0
@@ -339,7 +339,7 @@ class TestListVirtualMachines(object):
     def test_filter_by_status(self, runner, cli, vms):
         with mock.patch('slipstream.cli.api.Api.list_virtualmachines',
                         return_value=iter(vms)):
-            result = runner.invoke(cli, ['list', 'virtualmachines',
+            result = runner.invoke(cli, ['virtualmachines',
                                          '--status', 'running'])
 
         assert result.exit_code == 0
@@ -349,7 +349,7 @@ class TestListVirtualMachines(object):
     def test_multiple_filters(self, runner, cli, vms):
         with mock.patch('slipstream.cli.api.Api.list_virtualmachines',
                         return_value=iter(vms)):
-            result = runner.invoke(cli, ['list', 'virtualmachines',
+            result = runner.invoke(cli, ['virtualmachines',
                                          '--cloud', 'exoscale-ch-gva',
                                          '--status', 'running'])
 
@@ -360,7 +360,7 @@ class TestListVirtualMachines(object):
     def test_no_results(self, runner, cli):
         with mock.patch('slipstream.cli.api.Api.list_virtualmachines',
                         return_value=iter([])):
-            result = runner.invoke(cli, ['list', 'virtualmachines'])
+            result = runner.invoke(cli, ['virtualmachines'])
 
         assert result.exit_code == 0
         assert result.output == ("No virtual machines found matching "
@@ -393,14 +393,17 @@ class TestBuildImage(object):
 
 
 @pytest.mark.usefixtures('authenticated')
-class TestRunImage(object):
+class TestRunComponent(object):
+
+    app = models.App(name="centos-6", type='component', version=1,
+                     path="clara/centos-6")
 
     def test_default(self, runner, cli):
         run_id = uuid.uuid4()
 
-        with mock.patch('slipstream.cli.api.Api.run_image',
-                        return_value=run_id):
-            result = runner.invoke(cli, ['run', 'image', 'clara/centos-6'])
+        with mock.patch('slipstream.cli.api.Api.deploy', return_value=run_id):
+            with mock.patch('slipstream.cli.api.Api.get_module', return_value=self.app):
+                result = runner.invoke(cli, ['deploy', 'clara/centos-6'])
 
         assert result.exit_code == 0
         assert result.output == "%s\n" % run_id
@@ -408,24 +411,26 @@ class TestRunImage(object):
     def test_with_cloud(self, runner, cli):
         run_id = uuid.uuid4()
 
-        with mock.patch('slipstream.cli.api.Api.run_image',
-                        return_value=run_id):
-            result = runner.invoke(cli, ['run', 'image', 'clara/centos-6',
-                                         '--cloud=cloud1'])
+        with mock.patch('slipstream.cli.api.Api.deploy', return_value=run_id):
+            with mock.patch('slipstream.cli.api.Api.get_module', return_value=self.app):
+                result = runner.invoke(cli, ['deploy', 'clara/centos-6', '--cloud=cloud1'])
 
         assert result.exit_code == 0
         assert result.output == "%s\n" % run_id
 
 
 @pytest.mark.usefixtures('authenticated')
-class TestRunDeployment(object):
+class TestRunApplication(object):
+
+    app = models.App(name="wordpress", type='application', version=2,
+                     path="clara/wordpress")
 
     def test_default(self, runner, cli):
         run_id = uuid.uuid4()
 
-        with mock.patch('slipstream.cli.api.Api.run_deployment',
-                        return_value=run_id):
-            result = runner.invoke(cli, ['run', 'deployment', 'clara/wordpress'])
+        with mock.patch('slipstream.cli.api.Api.deploy', return_value=run_id):
+            with mock.patch('slipstream.cli.api.Api.get_module', return_value=self.app):
+                result = runner.invoke(cli, ['deploy', 'clara/wordpress'])
 
         assert result.exit_code == 0
         assert result.output == "%s\n" % run_id
@@ -433,11 +438,9 @@ class TestRunDeployment(object):
     def test_with_params(self, runner, cli):
         run_id = uuid.uuid4()
 
-        with mock.patch('slipstream.cli.api.Api.run_deployment',
-                        return_value=run_id):
-            result = runner.invoke(cli, ['run', 'deployment',
-                                         'wp:cloud=cloud1', 'wp:multiplicity=2',
-                                         'clara/wordpress'])
+        with mock.patch('slipstream.cli.api.Api.deploy', return_value=run_id):
+            with mock.patch('slipstream.cli.api.Api.get_module', return_value=self.app):
+                result = runner.invoke(cli, ['deploy', '--param', 'wp:multiplicity=2', '--cloud', 'wp:cloud1', 'clara/wordpress'])
 
         assert result.exit_code == 0
         assert result.output == "%s\n" % run_id
